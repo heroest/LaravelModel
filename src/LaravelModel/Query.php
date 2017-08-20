@@ -825,11 +825,11 @@ class Query
         $components[] = "FROM {$this->table}";
 
         //JOIN
-        $components = array_add($components, $this->join);
+        if(!empty($this->join)) $components = array_add($components, $this->join);
 
         //WHERE
         if(!empty($this->where)) {
-            $components = 'WHERE';
+            $components[] = 'WHERE';
             $components = array_add($components, $this->where);
         }
 

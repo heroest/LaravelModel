@@ -24,7 +24,7 @@
 >在适当的位置添加：
 >> <code>require vendor/autoload.php;</code>
 
->在你的Model中添加： 
+>在你的Model中添加以下Trait： 
 >> <code>use Heroest\LaravelModel\Traits\Model;</code>
 
 >在Model的construct或者适当的位置添加一下代码：
@@ -123,6 +123,4 @@ $model->fill(['username' => 'cba', 'password' => 'fed', 'email' => 'cba@tset.moc
 vp($model->getQueryLog());
 </code>
 </pre>
-
-
 
