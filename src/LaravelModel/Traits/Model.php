@@ -75,8 +75,9 @@ trait Model
      * @param [string] $name
      * @return $this
      */
-    public function setConnection($name)
+    public function connection($connection)
     {
+        if(!isset(self::$connection_pool[$connection])) throw new ConnectionNotFoundException("Model->connection(): connection [{$connection}] is not defined");
         $this->connection = $name;
         return $this;
     }
@@ -93,11 +94,28 @@ trait Model
     }
 
 
+    /**
+     * add a SELECT clause in the query
+     *
+     * @return $this
+     */
     public function select()
     {
         $params = func_get_args();
         $this->getQuery()->select($params);
         return $this;
+    }
+
+
+    /**
+     * return count for number of record
+     *
+     * @return void
+     */
+    public function count()
+    {
+        $params = func_get_args();
+        return $this->getQuery()->count($params);
     }
 
 
@@ -173,13 +191,11 @@ trait Model
         $this->getQuery()->offset($num);
         return $this;
     }
-
     public function take($num)
     {
         $this->getQuery()->take($num);
         return $this;
     }
-
     public function limit()
     {
         $params = func_get_args();
@@ -285,7 +301,7 @@ trait Model
         return $this;
     }
 
-    
+
     /**
      * Add Right Join Clause into Query
      *
@@ -297,6 +313,7 @@ trait Model
         $this->getQuery()->rightJoin($params);
         return $this;
     }
+
 
     /**
      * Add exist clause to Query
@@ -311,11 +328,78 @@ trait Model
     }
 
 
+    /**
+     * return last inserted id
+     *
+     * @return int or null
+     */
     public function lastInsertId()
     {
         return $this->getQuery()->lastInsertId();
     }
 
+
+    /**
+     * return number of row affected from last query
+     *
+     * @return int or null
+     */
+    public function rowCount()
+    {
+        return $this->getQuery()->rowCount();
+    }
+
+
+    /**
+     * Start a database transaction on the connection
+     *
+     * @param string $connection
+     * @return void
+     */
+    public function beginTransaction($connection = '')
+    {
+        $pdo = $this->getConnection($connection);
+        if(!$this->inTransaction($connection)) $pdo->beginTransaction();
+    }
+
+
+    /**
+     * Check if inside a transaction
+     *
+     * @param string $connection
+     * @return void
+     */
+    public function inTransaction($connection = '')
+    {
+        $pdo = $this->getConnection($connection);
+        return $pdo->inTransaction();
+    }
+
+
+    /**
+     * Rollback a transaction
+     *
+     * @param string $connection
+     * @return void
+     */
+    public function rollback($connection = '')
+    {
+        $pdo = $this->getConnection($connection);
+        if($this->inTransaction($connection)) $pdo->rollback();
+    }
+
+
+    /**
+     * Commit a transaction
+     *
+     * @param string $connection
+     * @return void
+     */
+    public function commit($connection = '')
+    {
+        $pdo = $this->getConnection($connection);
+        if($this->inTransaction($connection)) $pdo->commit();
+    }
 
     /**
      * Binding Data Set
@@ -332,6 +416,11 @@ trait Model
     }
 
 
+    /**
+     * Convert Model to data array
+     *
+     * @return array
+     */
     public function toArray()
     {
         if(empty($this->hidden)) {
@@ -412,16 +501,16 @@ trait Model
      * @param string $name
      * @return PDO object
      */
-    private function getConnection()
+    private function getConnection($connection = '')
     {
-        if(!empty($this->pdo)) return $this->pdo;
+        //if(!empty($this->pdo)) return $this->pdo;
 
-        $name = $this->connection;
+        $connection = empty($connection) ? $this->connection : $connection;
 
-        if (empty($name) or !isset(self::$connection_pool[$name]))
-            throw new ConnectionNotFoundException("Model->getConnection(): Connection[{$name}] is missing, maybe use addConnection() before Query?");
+        if (empty($connection) or !isset(self::$connection_pool[$connection]))
+            throw new ConnectionNotFoundException("Model->getConnection(): Connection[{$connection}] is missing, maybe use addConnection() before Query?");
 
-        return self::$connection_pool[$name];
+        return self::$connection_pool[$connection];
     }
 
 

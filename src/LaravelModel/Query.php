@@ -268,8 +268,21 @@ class Query
     {
         $params = func_get_args();
         $params = (count($params) === 1 and is_array($params[0])) ? $params[0] : $params;
-
         $this->select = $params;
+    }
+
+
+    public function count()
+    {
+        $params = func_get_args();
+        $params = (count($params) === 1 and is_array($params[0])) ? $params[0] : $params;
+        $this->select = ["COUNT(*) as database_record_count"];
+        $this->offset = null;
+        $this->take = null;
+        $result = $this->executeSelectQuery();
+        $result = object2Array($result);
+        $this->afterQuery();
+        return $result['database_record_count'];
     }
 
 
@@ -280,7 +293,10 @@ class Query
      */
     public function get()
     {
-        return $this->executeSelectQuery();
+        $result = $this->executeSelectQuery();
+        $result = $this->buildQueryResult($result);
+        $this->afterQuery();
+        return $result;
     }
 
 
@@ -294,7 +310,8 @@ class Query
         $this->limit(1);
         $result = $this->executeSelectQuery();
         $this->setPrimaryKeyValue($result);
-
+        $result = $this->buildQueryResult($result);
+        $this->afterQuery();
         return $result;
     }
 
@@ -310,7 +327,8 @@ class Query
         $this->where([$this->primaryKey, '=', $mixed]);
         $result = $this->executeSelectQuery();
         $this->setPrimaryKeyValue($result);
-
+        $result = $this->buildQueryResult($result);
+        $this->afterQuery();
         return $result;
     }
 
@@ -324,7 +342,10 @@ class Query
     public function findMany(array $value_arr)
     {
         $this->whereIn($this->primaryKey, $value_arr);
-        return $this->executeSelectQuery();
+        $result = $this->executeSelectQuery();
+        $result = $this->buildQueryResult($result);
+        $this->afterQuery();
+        return $result;
     }
 
 
@@ -752,7 +773,7 @@ class Query
 
 
     /**
-     * Save or Create a Record in the database
+     * Update or Create a Record in the database
      *
      * @return void
      */
@@ -779,13 +800,15 @@ class Query
 
             $result = $this->where($this->primaryKey, $primary_value)->executeUpdateQuery($data_diff);
             $this->baseModel->populate($this->saved);
-            return $result;
+            $this->afterQuery();
+            return $this->baseModel;
             
         } else {
 
             $result = $this->executeInsertQuery($data_diff);
             $this->baseModel->populate($this->saved);
-            return $result;
+            $this->afterQuery();
+            return $this->baseModel;
             
         }
     }
@@ -800,144 +823,9 @@ class Query
     {
         $params = func_get_args();
         $params = (count($params) === 1 and is_array($params[0])) ? $params[0] : $params;
-        
-        return $this->executeUpdateQuery($params);
-    }
-
-
-
-    
-
-    /**
-     * Execute a select Query
-     *
-     * @return result
-     */
-    private function executeSelectQuery()
-    {
-        $this->beforeQuery();
-        $components = [];
-
-        //SELECT
-        $components[] = 'SELECT ' . (empty($this->select) ? '*' : implode(',', $this->select));
-        
-        //FROM
-        $components[] = "FROM {$this->table}";
-
-        //JOIN
-        if(!empty($this->join)) $components = array_add($components, $this->join);
-
-        //WHERE
-        if(!empty($this->where)) {
-            $components[] = 'WHERE';
-            $components = array_add($components, $this->where);
-        }
-
-
-        //LIMIT
-        $limit = $this->buildLimitClause();
-        if(!empty($limit)) $components[] = $limit; 
-        
-        //compile
-        list($sql, $parameters) = $this->compile($components);  
-        $this->addQueryLog($sql, $parameters);
-
-        //prepare and execute
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute($parameters);
-
-        if($this->take === 1) {
-            $result = $stmt->fetch();
-            $this->populate(object2Array($result));
-        } else {
-            $result = $stmt->fetchAll();
-        }
-
-        //clean up and return Data
-        $result = $this->buildQueryResult($result);
+        $result = $this->executeUpdateQuery($params);
         $this->afterQuery();
         return $result;
-    }
-
-
-    /**
-     * Execute a update query
-     *
-     * @param array $params
-     * @return void
-     */
-    private function executeUpdateQuery(array $params)
-    {
-        $this->beforeQuery();
-
-        //Timestamps
-        if(!empty($this->updated_at)) $params[$this->updated_at] = date($this->dateFormat, time());
-
-        $components = [];
-
-        //UPDATE Table
-        $components[] = "UPDATE {$this->table} SET";
-
-        //SET FIELD
-        $components[] = Factory::build('Query', 'Set', $params);
-
-        //WHERE
-        $components[] = "WHERE";
-        $components = array_merge($components, $this->where);
-
-        //LIMIT
-        $limit = $this->buildLimitClause();
-        if(!empty($limit)) $components[] = $limit;
-
-        //COMPILE
-        list($sql, $parameters) = $this->compile($components);
-        $this->addQueryLog($sql, $parameters);
-
-        //PREPARE AND EXECUTE
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute($parameters);
-        $this->rowCount = $stmt->rowCount();
-
-        //CLEAN UP
-        $this->afterQuery();
-        return $this->rowCount;
-    }
-
-
-    /**
-     * Execute a INSERT Query
-     *
-     * @param [type] $params
-     * @return void
-     */
-    private function executeInsertQuery(array $params)
-    {
-        $this->beforeQuery();
-        $components = [];
-
-        //Timestamps
-        if(!empty($this->created_at)) $params[$this->created_at] = date($this->dateFormat, time());
-        if(!empty($this->updated_at)) $params[$this->updated_at] = date($this->dateFormat, time());
-
-        //Insert
-        $components[] = "INSERT INTO {$this->table}";
-
-        //VALUES components
-        $components[] = Factory::build('Query', 'Values', $params);
-
-        //COMPILE
-        list($sql, $parameters) = $this->compile($components);
-        $this->addQueryLog($sql, $parameters);
-
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute($parameters);
-
-        $id = $this->pdo->lastInsertId();
-        $this->primaryKeyValue = $id;
-        $this->lastInsertId = $id;
-
-        $this->afterQuery();
-        return $id;
     }
 
 
@@ -990,6 +878,131 @@ class Query
 
 
 
+
+
+
+
+    /**
+     * Execute a select Query
+     *
+     * @return result
+     */
+    private function executeSelectQuery()
+    {
+        $this->beforeQuery();
+        $components = [];
+
+        //SELECT
+        $components[] = 'SELECT ' . (empty($this->select) ? '*' : implode(',', $this->select));
+        
+        //FROM
+        $components[] = "FROM {$this->table}";
+
+        //JOIN
+        if(!empty($this->join)) $components = array_add($components, $this->join);
+
+        //WHERE
+        if(!empty($this->where)) {
+            $components[] = 'WHERE';
+            $components = array_add($components, $this->where);
+        }
+
+        //LIMIT
+        $limit = $this->buildLimitClause();
+        if(!empty($limit)) $components[] = $limit; 
+        
+        //compile
+        list($sql, $parameters) = $this->compile($components);  
+        $this->addQueryLog($sql, $parameters);
+
+        //prepare and execute
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($parameters);
+
+        if($this->take === 1) {
+            $result = $stmt->fetch();
+            $this->populate(object2Array($result));
+        } else {
+            $result = $stmt->fetchAll();
+        }
+        return $result;
+    }
+
+
+    /**
+     * Execute a update query
+     *
+     * @param array $params
+     * @return void
+     */
+    private function executeUpdateQuery(array $params)
+    {
+        $this->beforeQuery();
+
+        //Timestamps
+        if(!empty($this->updated_at)) $params[$this->updated_at] = date($this->dateFormat, time());
+
+        $components = [];
+
+        //UPDATE Table
+        $components[] = "UPDATE {$this->table} SET";
+
+        //SET FIELD
+        $components[] = Factory::build('Query', 'Set', $params);
+
+        //WHERE
+        $components[] = "WHERE";
+        $components = array_merge($components, $this->where);
+
+        //LIMIT
+        $limit = $this->buildLimitClause();
+        if(!empty($limit)) $components[] = $limit;
+
+        //COMPILE
+        list($sql, $parameters) = $this->compile($components);
+        $this->addQueryLog($sql, $parameters);
+
+        //PREPARE AND EXECUTE
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($parameters);
+        $this->rowCount = $stmt->rowCount();
+        return $this->rowCount;
+    }
+
+
+    /**
+     * Execute a INSERT Query
+     *
+     * @param [type] $params
+     * @return void
+     */
+    private function executeInsertQuery(array $params)
+    {
+        $this->beforeQuery();
+        $components = [];
+
+        //Timestamps
+        if(!empty($this->created_at)) $params[$this->created_at] = date($this->dateFormat, time());
+        if(!empty($this->updated_at)) $params[$this->updated_at] = date($this->dateFormat, time());
+
+        //Insert
+        $components[] = "INSERT INTO {$this->table}";
+
+        //VALUES components
+        $components[] = Factory::build('Query', 'Values', $params);
+
+        //COMPILE
+        list($sql, $parameters) = $this->compile($components);
+        $this->addQueryLog($sql, $parameters);
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($parameters);
+
+        $id = $this->pdo->lastInsertId();
+        $this->primaryKeyValue = $id;
+        $this->lastInsertId = $id;
+        return $id;
+    }
 
 
     /**
@@ -1116,6 +1129,12 @@ class Query
         $this->where = [];
 
         $this->select = [];
+
+        $this->join = [];
+
+        $this->on = [];
+
+        $this->with = [];
 
         $this->offset = null;
 

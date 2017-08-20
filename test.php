@@ -37,7 +37,7 @@ class TestModel
 $model = new \Test\Model\TestModel();
 
 //$list = $model->findMany([1,2,3,4,5,6,7,8]);
-
+$model->beginTransaction();
 $list = $model
             ->leftJoin('user_ext e1', function($join){
                 $join->on('e1.uid', '=', 'user.id');
@@ -50,16 +50,18 @@ $list = $model
                 $join->on('e2.uid', '=', 'user.id');
                 $join->on('e2.uid', 0);
             })
+            ->select('user.*')
             ->limit(3)
             ->get();
 
 //vpd($list);
 foreach($list as $user) {
-    vp($user->toArray());
-    //$user->username = mt_rand(100, 999);
-    //$user->save();
+    //vp($user->toArray());
+    $user->username = mt_rand(100, 999);
+    $user->save();
 }
-
+$model->rollback();
+//$model->commit();
 vp($model->getQueryLog());
 /*
 $model->fill(['username' => 'abc', 'password' => 'def', 'email' => 'abc@test.com'])->save();

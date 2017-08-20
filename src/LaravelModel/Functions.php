@@ -97,7 +97,7 @@ if(!function_exists('array_compare')) {
 
         $result = [];
         foreach($arr_b as $key => $val) {
-            if(!isset($arr_a[$key]) or $arr_a[$key] != $val) $result[$key] = $val;
+            if((!isset($arr_a[$key]) and !is_null($arr_a[$key])) or $arr_a[$key] !== $val) $result[$key] = $val;
         }
         return $result;
     }
