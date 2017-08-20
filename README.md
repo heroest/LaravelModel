@@ -19,7 +19,7 @@
 
 使用方法：
 =============
-composer require heroest/laravel-model
+composer require heroest/laravel-model dev-master
 
 >在适当的位置添加：
 >> <code>require vendor/autoload.php;</code>
