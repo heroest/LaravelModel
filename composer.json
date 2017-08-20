@@ -1,8 +1,9 @@
 {
     "name": "heroest/laravel-model",
-    "description": "laravel style model",
+    "description": "Laravel Eloquent ORM",
     "type": "library",
     "license": "MIT",
+    "version": "1.0.0-dev",
     "authors": [
         {
             "name": "Heroest",
