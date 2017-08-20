@@ -1,6 +1,6 @@
 #LaravelModel
 
-### 这是一款可以在各个地方自由使用Laravel Eloquent风格的ORM
+## 这是一款可以在各个地方自由使用Laravel Eloquent风格的ORM
 
 
 ###### 你是不是还在为维护Legacy Code而头疼？
@@ -13,8 +13,8 @@
 
 环境要求：
 =============
->>> PHP > 5.4.0
->>> PDO
+* PHP >= 5.4.0
+* PDO
 
 
 使用方法：
@@ -22,10 +22,10 @@
 composer require heroest/laravel-model
 
 >在适当的位置添加：
-<code>require vendor/autoload.php;</code>
+>> <code>require vendor/autoload.php;</code>
 
 >在你的Model中添加： 
-<code>user Heroest\LaravelModel\Traits\Model;</code>
+>> <code>user Heroest\LaravelModel\Traits\Model;</code>
 
 >在Model的construct或者适当的位置添加一下代码：
 <pre>
@@ -47,17 +47,19 @@ $this->addConnection('project', [
 $this->addConnection('project', $pdo_object);
 </code>
 
-
+<br /><br />
 Done. Enjoy Laravel Eloquent
 
+</br />
+######Relationship功能正在开发中....
 
->>>Relationship功能正在开发中....
 
+范例代码, 或者查看test.php的代码：
+---------
 
->范例代码
 <pre>
 <code>
-<?php namespace Test\Model;
+namespace Test\Model;
 
 require('vendor/autoload.php');
 
@@ -119,7 +121,6 @@ vp($model->getQueryLog());
 $model->fill(['username' => 'abc', 'password' => 'def', 'email' => 'abc@test.com'])->save();
 $model->fill(['username' => 'cba', 'password' => 'fed', 'email' => 'cba@tset.moc'])->save();
 vp($model->getQueryLog());
-?>
 </code>
 </pre>
 
