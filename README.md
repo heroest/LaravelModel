@@ -1,4 +1,4 @@
-# LaravelModel, 一款可以在各个地方自由使用Laravel Eloquent风格的ORM
+#LaravelModel
 
 ### 这是一款可以在各个地方自由使用Laravel Eloquent风格的ORM
 
@@ -41,6 +41,13 @@ $this->addConnection('project', [
 <code>
 $this->addConnection('project', $pdo_object);
 </code>
+
+
+Done. Enjoy Laravel Eloquent
+
+
+>>>Relationship功能正在开发中....
+
 
 >范例代码
 <code>
@@ -110,7 +117,4 @@ vp($model->getQueryLog());
 </code>
 
 
-Done. Enjoy Laravel Eloquent
 
-
->>>Relationship功能正在开发中....
