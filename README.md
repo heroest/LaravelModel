@@ -13,8 +13,8 @@
 
 环境要求：
 =============
-PHP > 5.4.0
-PDO
+>>> PHP > 5.4.0
+>>> PDO
 
 
 使用方法：
@@ -28,6 +28,7 @@ composer require heroest/laravel-model
 <code>user Heroest\LaravelModel\Traits\Model;</code>
 
 >在Model的construct或者适当的位置添加一下代码：
+<pre>
 <code>
 //这条语句的作用相当于添加了一条connection到PDO连接池， 并取名为project, 最后在Model设置默认链接为project
 $this->addConnection('project', [
@@ -39,6 +40,7 @@ $this->addConnection('project', [
             'port' => 3306,
         ]);
 </code>
+</pre>
 
 >或者如果你可以获取PDO实例的话也可以这样
 <code>
@@ -53,6 +55,7 @@ Done. Enjoy Laravel Eloquent
 
 
 >范例代码
+<pre>
 <code>
 <?php namespace Test\Model;
 
@@ -118,6 +121,7 @@ $model->fill(['username' => 'cba', 'password' => 'fed', 'email' => 'cba@tset.moc
 vp($model->getQueryLog());
 ?>
 </code>
+</pre>
 
 
 
