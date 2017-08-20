@@ -25,7 +25,7 @@ composer require heroest/laravel-model
 >> <code>require vendor/autoload.php;</code>
 
 >在你的Model中添加： 
->> <code>user Heroest\LaravelModel\Traits\Model;</code>
+>> <code>use Heroest\LaravelModel\Traits\Model;</code>
 
 >在Model的construct或者适当的位置添加一下代码：
 <pre>
