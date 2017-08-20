@@ -19,7 +19,7 @@
 
 使用方法：
 =============
-composer require heroest/laravel-model dev-master
+<code>composer require heroest/laravel-model dev-master</code>
 
 >在适当的位置添加：
 >> <code>require vendor/autoload.php;</code>
@@ -47,11 +47,11 @@ $this->addConnection('project', [
 $this->addConnection('project', $pdo_object);
 </code>
 
-<br /><br />
+<br />
+<br />
 Done. Enjoy Laravel Eloquent
 
-</br />
-######Relationship功能正在开发中....
+###### Relationship功能正在开发中....
 
 
 范例代码, 或者查看test.php的代码：
