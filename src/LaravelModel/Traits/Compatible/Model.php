@@ -553,4 +553,14 @@ trait Model
         $parent = get_parent_class();
         if(!empty($parent) and method_exists($parent, '__set')) parent::__set($key, $val);
     }
+
+    public function __isset($key)
+    {
+        if(isset($this->_data[$key]) and (empty($this->_hidden) or !in_array($key, $this->_hidden))) {
+            return true;
+        } else {
+            $parent = get_parent_class();
+            return (!empty($parent) and method_exists($parent, '__isset')) ? parent::__isset($key) : false;
+        }
+    }
 }

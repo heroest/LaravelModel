@@ -1,6 +1,7 @@
 <?php namespace Heroest\LaravelModel;
 
 use Heroest\LaravelModel\Exception\InvalidParameterException;
+use Heroest\LaravelModel\Exception\FunctionNotExistsException;
 use Heroest\LaravelModel\Component\Query\Interfaces\QueryComponent;
 use Heroest\LaravelModel\Component\Factory;
 use Closure;
@@ -1159,4 +1160,14 @@ class Query
 
 
     
+    public function __call($func_name, $parameters)
+    {
+        if(strpos($func_name, '_') !== 0) throw new FunctionNotExistException("Query->__call(): {$func_name} method does not exists");
+
+        $func_name = substr($func_name, 1);
+        if(!method_exists($this, $func_name)) throw new FunctionNotExistException("Query->__call(): {$func_name} method does not exists");
+
+        return call_user_func_array([$this, $func_name], $parameters);
+    }
+
 }
