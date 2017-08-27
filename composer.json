@@ -18,7 +18,7 @@
             "Heroest\\LaravelModel\\": "src/LaravelModel/"
         },
         "files": [
-            "src/LaravelModel/Functions.php"
+            "src/LaravelModel/Helper/Functions.php"
         ]
     }
 }

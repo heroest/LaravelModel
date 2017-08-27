@@ -3,12 +3,13 @@
 use Heroest\LaravelModel\Exception\InvalidParameterException;
 use Heroest\LaravelModel\Exception\ConnectionNotFoundException;
 use Heroest\LaravelModel\Query;
+use Heroest\LaravelModel\ConnectionPool;
 
 use PDO, Exception;
 
 trait Model
 {
-    private static $connection_pool = [];
+    use \Heroest\LaravelModel\Traits\Connection;
 
     private $connection = null;
 
@@ -49,22 +50,14 @@ trait Model
     /**
      * Initialize a connection(PDO) and save in the connection_pool
      *
-     * @param [string] $connection_name
+     * @param string $connection_name
      * @param array $config || PDO instance
      * @return $this
      */
     public function addConnection($name, $mixed)
     {
-        if(!isset(self::$connection_pool[$name])) {
-            if(!is_array($mixed) and !($mixed instanceof PDO)) 
-                throw new InvalidParameterException("Model->addConnection(), the 2nd parameter expects an array or a PDO instance");
-            
-            self::$connection_pool[$name] = is_array($mixed) 
-                                                ? $this->buildPdo($mixed)
-                                                : $mixed;
-        }
         $this->connection = $name;
-
+        $this->loadConnection($name, $mixed);
         return $this;
     }
 
@@ -72,12 +65,13 @@ trait Model
     /**
      * Set connection name
      *
-     * @param [string] $name
+     * @param string $name
      * @return $this
      */
-    public function connection($connection)
+    public function connection($name)
     {
-        if(!isset(self::$connection_pool[$connection])) throw new ConnectionNotFoundException("Model->connection(): connection [{$connection}] is not defined");
+        if(!$this->hasConnection($name))
+            throw new ConnectionNotFoundException("Model->connection(): [{$name}] not found");
         $this->connection = $name;
         return $this;
     }
@@ -315,6 +309,15 @@ trait Model
     }
 
 
+    public function with()
+    {
+        $params = func_get_args();
+        $params = (count($params) === 1 and is_array($params[0])) ? $params[0] : $params;
+        $this->getQuery()->with($params);
+        return $this;
+    }
+
+
     /**
      * Add exist clause to Query
      *
@@ -358,6 +361,7 @@ trait Model
      */
     public function beginTransaction($connection = '')
     {
+        $connection = empty($connection) ? $this->connection : $connection;
         $pdo = $this->getConnection($connection);
         if(!$this->inTransaction($connection)) $pdo->beginTransaction();
     }
@@ -371,6 +375,7 @@ trait Model
      */
     public function inTransaction($connection = '')
     {
+        $connection = empty($connection) ? $this->connection : $connection;
         $pdo = $this->getConnection($connection);
         return $pdo->inTransaction();
     }
@@ -384,6 +389,7 @@ trait Model
      */
     public function rollback($connection = '')
     {
+        $connection = empty($connection) ? $this->connection : $connection;
         $pdo = $this->getConnection($connection);
         if($this->inTransaction($connection)) $pdo->rollback();
     }
@@ -397,6 +403,7 @@ trait Model
      */
     public function commit($connection = '')
     {
+        $connection = empty($connection) ? $this->connection : $connection;
         $pdo = $this->getConnection($connection);
         if($this->inTransaction($connection)) $pdo->commit();
     }
@@ -412,7 +419,14 @@ trait Model
         $this->setPrimaryKeyValue($data);
         $this->data = $data;
         $this->saved = $data;
+        $this->query = null;
         return $this;
+    }
+
+
+    public function markSaved()
+    {
+        $this->saved = $this->data;
     }
 
 
@@ -436,48 +450,90 @@ trait Model
 
 
     /**
-     * Initialize a PDO object from config
+     * Set Map type of selection with relation
      *
-     * @param [array] $config
-     * @return PDO object;
+     * @param string $type
+     * @return void
      */
-    private function buildPdo($config)
+    public function map($type, $local, $remote)
     {
-        $keys = ['type', 'host', 'username', 'password', 'db_name', 'port'];
-        foreach($keys as $key) {
-            if( !isset($config[$key]) ) throw new InvalidParameterException("Model->buildPdo(): {$key} is missing from the connection configuration");
-        }
-        $charset = isset($config['charset']) ? $config['charset'] : 'utf8';
-        $dsn = "{$config['type']}:dbname={$config['db_name']};host={$config['host']};port={$config['port']};charset={$charset}";
-        
-        $base_options = [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-			PDO::ATTR_EMULATE_PREPARES => false,
-			PDO::ATTR_PERSISTENT => false,
-			PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_OBJ,
-        ];
-        $options = isset($config['options'])
-                    ? array_merge($base_options, $config['options'])
-                    : $base_options;
-
-        $pdo = new PDO($dsn, $config['username'], $config['password'], $options);
-
-        return $pdo;
+        $this->getQuery()->map($type, $local, $remote);
+        return $this;
     }
-    
+
+
+    public function withScope($scope)
+    {
+        $this->getQuery()->withScope($scope);
+        return $this;
+    }
+
+
+    public function getWithScope($scope, $name)
+    {
+        return $this->getQuery()->getWithScope($scope, $name);
+    }
+
+
+    /**
+     * Build one to one relationship
+     *
+     * @param mixed $mixed
+     * @param string $foreign_key
+     * @param string $primary_key
+     * @return boolean
+     */
+    public function hasOne($mixed, $foreign_key, $primary_key)
+    {
+        if(is_string($mixed)) {
+            $obj = new $mixed();
+        } elseif(is_object($mixed)) {
+            $obj = clone $mixed;
+        } else {
+            throw new InvalidParameterException('Model->hasOne(): the 1st parameter expects to be string or object type');
+        }
+
+        return $obj->map('one', $foreign_key, $primary_key)->withScope([$this->data]);
+    }
+
+    public function hasMany($mixed, $foreign_key, $primary_key)
+    {
+        if(is_string($mixed)) {
+            $obj = new $mixed();
+        } elseif(is_object($mixed)) {
+            $obj = clone $mixed;
+        } else {
+            throw new InvalidParameterException('Model->hasMany(): the 1st parameter expects to be string or object type');
+        }
+
+        return $obj->map('many', $foreign_key, $primary_key)->withScope([$this->data]);
+    }
+
+    public function belongsTo($mixed, $foreign_key, $primary_key)
+    {
+        if(is_string($mixed)) {
+            $obj = new $mixed();
+        } elseif(is_object($mixed)) {
+            $obj = clone $mixed;
+        } else {
+            throw new InvalidParameterException('Model->belongsTo(): the 1st parameter expects to be string or object type');
+        }
+
+        return $obj->map('one', $primary_key, $foreign_key)->withScope($this->data);
+    }
+
     /**
      * Return a initialized Query Object;
      *
-     * @return /Heroest/LaravelModel/Query;
+     * @return Query;
      */
     private function getQuery()
     {
         if (is_null($this->query)) {
-
             $this->query = new Query([
                 'baseModel' => $this,
                 'connection' => $this->connection,
-                'pdo' => $this->getConnection(),
+                'pdo' => self::$pool->getConnection($this->connection),
                 'primaryKey' => isset($this->primaryKey) ? $this->primaryKey : 'id',
                 'primaryKeyValue' => !is_null($this->primaryKeyValue) ? $this->primaryKeyValue : null, 
                 'table' => isset($this->table) ? $this->table : '',
@@ -491,26 +547,7 @@ trait Model
                 'updated_at' => isset($this->updated_at) ? $this->updated_at : '',
             ]);
         }
-
         return $this->query;
-    }
-
-    /**
-     * get a connection (PDO object) by connection_name
-     *
-     * @param string $name
-     * @return PDO object
-     */
-    private function getConnection($connection = '')
-    {
-        //if(!empty($this->pdo)) return $this->pdo;
-
-        $connection = empty($connection) ? $this->connection : $connection;
-
-        if (empty($connection) or !isset(self::$connection_pool[$connection]))
-            throw new ConnectionNotFoundException("Model->getConnection(): Connection[{$connection}] is missing, maybe use addConnection() before Query?");
-
-        return self::$connection_pool[$connection];
     }
 
 
@@ -524,7 +561,7 @@ trait Model
     {
         $key = $this->primaryKey;
         if(empty($key)) {
-            vpd($key);
+            throw InvalidParameterException("Model->setPrimaryKeyValue(): PrimaryKey is not defined");
         } elseif (is_object($mixed)) {
             $this->primaryKeyValue = isset($mixed->$key) ? $mixed->$key : null;
         } elseif (is_array($mixed)) {
@@ -562,5 +599,12 @@ trait Model
             $parent = get_parent_class();
             return (!empty($parent) and method_exists($parent, '__isset')) ? parent::__isset($key) : false;
         }
+    }
+
+    public function __unset($key)
+    {
+        if(isset($this->data[$key])) unset($this->data[$key]);
+        $parent = get_parent_class();
+        if(!empty($parent) and method_exists($parent, '__unset')) parent::__unset($key);
     }
 }

@@ -2,26 +2,61 @@
 
 require('vendor/autoload.php');
 
-use Heroest\LaravelModel\Traits\Compatiable\Model;
+use Heroest\LaravelModel\Traits\Model;
 //use Heroest\LaravelModel\Traits\Relationship;
 
-class TestModel
+class User
 {
     use Model;
 
-    protected $_table = 'user';
+    protected $table = 'user';
 
-    protected $_primaryKey = 'id';
+    protected $primaryKey = 'id';
 
-    protected $_fillable = ['username', 'password', 'email'];
+    protected $fillable = ['username', 'password', 'email'];
 
-    protected $_updated_at  = 'updated_at';
+    protected $updated_at  = 'updated_at';
 
-    protected $_hidden = ['password'];
+    protected $hidden = ['password'];
 
     public function __construct()
     {
-        $this->_addConnection('project', [
+        $this->addConnection('project', [
+            'type' => 'mysql',
+            'host' => 'localhost',
+            'username' => 'root',
+            'password' => '664664',
+            'db_name' => 'laravel_test',
+            'port' => 3306,
+        ]);
+    }
+
+    public function ext()
+    {
+        return $this->hasOne(\Test\Model\UserExt::CLASS, 'uid', 'id');
+    }
+
+    public function post()
+    {
+        return $this->hasMany(\Test\Model\Post::CLASS, 'poster_id', 'id');
+    }
+}
+
+class UserExt
+{
+    use Model;
+
+    protected $table = 'user_ext';
+
+    protected $primaryKey = 'id';
+
+    protected $fillable = ['uid', 'title'];
+
+    protected $updated_at  = 'updated_at';
+
+    public function __construct()
+    {
+        $this->addConnection('project', [
             'type' => 'mysql',
             'host' => 'localhost',
             'username' => 'root',
@@ -32,36 +67,69 @@ class TestModel
     }
 }
 
+class Post
+{
+    use Model;
 
+    protected $table = 'post';
 
-$model = new \Test\Model\TestModel();
+    protected $primaryKey = 'id';
 
-//$list = $model->findMany([1,2,3,4,5,6,7,8]);
-$model->_beginTransaction();
+    protected $updated_at = 'updated_at';
+
+    public function __construct()
+    {
+        $this->addConnection('project', [
+            'type' => 'mysql',
+            'host' => 'localhost',
+            'username' => 'root',
+            'password' => '664664',
+            'db_name' => 'laravel_test',
+            'port' => 3306,
+        ]);
+    }
+    
+    public function poster()
+    {
+        return $this->belonsTo(\Test\Model\User::CLASS, 'poster_id', 'id');
+    }
+}
+
+$model = new \Test\Model\User();
+
+//$list = $model->with(['ext' => function($q){ $q->where('uid', '>', 0); }])->findMany([1,2,3]);
+$model->beginTransaction();
+
 $list = $model
-            ->_leftJoin('user_ext e1', function($join){
-                $join->_on('e1.uid', '=', 'user.id');
-                $join->_on('e1.uid', '!=', 0);
-                $join->_orOn(function($join){
-                    $join->_on('e1.title', '!=', '');
+            ->with(['ext' => function($q){
+                $q->where(function($qu){
+                    $qu->where('uid', '>', 1);
+                    $qu->orWhere('uid', '<', 10);
+                });
+            }, 'post'])
+            ->leftJoin('user_ext e1', function($join){
+                $join->on('e1.uid', '=', 'user.id');
+                $join->on('e1.uid', '!=', 0);
+                $join->orOn(function($join){
+                    $join->on('e1.title', '!=', '');
                 });
             })
-            ->_leftJoin('user_ext e2', function($join){
-                $join->_on('e2.uid', '=', 'user.id');
-                $join->_on('e2.uid', 0);
+            ->leftJoin('user_ext e2', function($join){
+                $join->on('e2.uid', '=', 'user.id');
+                $join->on('e2.uid', 0);
             })
-            ->_select('user.*')
-            ->_limit(3)
-            ->_get();
+            ->select('user.*')
+            ->limit(3)
+            ->get();
 
-//vpd($list);
+//ppd($list);
 foreach($list as $user) {
-    //vp($user->toArray());
-    $user->username = mt_rand(100, 999);
-    $user->_save();
+    vp($user->toArray());
+    //$user->username = mt_rand(100, 999);
+    $user->save();
 }
-$model->rollback();
-//$model->commit();
+//$model->rollback();
+$model->commit();
 vp($model->getQueryLog());
 /*
 $model->fill(['username' => 'abc', 'password' => 'def', 'email' => 'abc@test.com'])->save();

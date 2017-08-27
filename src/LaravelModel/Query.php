@@ -5,6 +5,7 @@ use Heroest\LaravelModel\Exception\FunctionNotExistsException;
 use Heroest\LaravelModel\Component\Query\Interfaces\QueryComponent;
 use Heroest\LaravelModel\Component\Factory;
 use Closure;
+use Exception;
 
 class Query
 {
@@ -42,7 +43,7 @@ class Query
     /**
      * PDO object
      *
-     * @var [PDO object]
+     * @var PDO
      */
     private $pdo;
 
@@ -67,7 +68,7 @@ class Query
     /**
      * Last inserted id;
      *
-     * @var [integer]
+     * @var integer
      */
     private $lastInsertId = null;
 
@@ -201,6 +202,17 @@ class Query
 
 
     /**
+     * Map config for selection with relationships
+     *
+     * @var string 'one' or 'many'
+     */
+    private $map = null;
+    private $local_key = '';
+    private $remote_key = '';
+
+
+
+    /**
      * Number of row affected after Update Or Delete Query
      *
      * @var [int]
@@ -211,7 +223,7 @@ class Query
     /**
      * Data Storage
      *
-     * @var [array]
+     * @var array
      */
     private $data = [];
 
@@ -219,7 +231,7 @@ class Query
     /**
      * Data that saved
      *
-     * @var [array]
+     * @var array
      */
     private $saved = [];
 
@@ -296,6 +308,37 @@ class Query
     {
         $result = $this->executeSelectQuery();
         $result = $this->buildQueryResult($result);
+        
+        //handle With Relationships
+        if(!empty($this->with)) $result = $this->nextWithScope($result);
+
+        $this->afterQuery();
+        return $result;
+    }
+
+
+    /**
+     * Get Result from the Query with Scope
+     *
+     * @return $result
+     */
+    public function getWithScope($scope, $name)
+    {
+        $this->scope = $scope;
+
+        $withIn = [];
+        foreach($scope as $item) {
+            $remote = $this->remote_key;
+            $withIn[] = is_object($item) ? $item->$remote : $item[$remote];
+        }
+        $this->whereIn($this->local_key, $withIn);
+
+        $result = $this->executeSelectQuery();
+        $result = $this->buildQueryResult($result);
+        //handle With Relationships
+        if(!empty($this->with)) $result = $this->nextWithScope($result);
+        if(!empty($this->scope)) $result = $this->backWithResult($result, $name);
+        
         $this->afterQuery();
         return $result;
     }
@@ -312,6 +355,10 @@ class Query
         $result = $this->executeSelectQuery();
         $this->setPrimaryKeyValue($result);
         $result = $this->buildQueryResult($result);
+
+        //handle With Relationships
+        if(!empty($this->with)) $result = $this->nextWithScope($result);
+        
         $this->afterQuery();
         return $result;
     }
@@ -329,6 +376,10 @@ class Query
         $result = $this->executeSelectQuery();
         $this->setPrimaryKeyValue($result);
         $result = $this->buildQueryResult($result);
+
+        //handle With Relationships
+        if(!empty($this->with)) $result = $this->nextWithScope($result);
+        
         $this->afterQuery();
         return $result;
     }
@@ -345,6 +396,11 @@ class Query
         $this->whereIn($this->primaryKey, $value_arr);
         $result = $this->executeSelectQuery();
         $result = $this->buildQueryResult($result);
+
+        //handle With Relationships
+        if(!empty($this->with)) $result = $this->nextWithScope($result);
+        $result = $this->buildQueryResult($result);
+        
         $this->afterQuery();
         return $result;
     }
@@ -844,7 +900,7 @@ class Query
     /**
      * get last inserted id from previous query
      *
-     * @return int || null
+     * @return int or null
      */
     public function lastInsertId()
     {
@@ -875,12 +931,36 @@ class Query
     }
 
 
+    /**
+     * Set map mode and relation keys for scope
+     *
+     * @param string $type
+     * @param string $local
+     * @param string $remote
+     * @return void
+     */
+    public function map($type, $local, $remote)
+    {
+        $this->map = $type;
+
+        $this->local_key = $local;
+
+        $this->remote_key = $remote;
+    }
 
 
+    public function withScope($data)
+    {
+        $this->scope = $data;
+    }
 
 
-
-
+    public function with()
+    {
+        $params = func_get_args();
+        $params = (count($params) === 1 and is_array($params[0])) ? $params[0] : $params;
+        $this->with = $params;
+    }
 
 
     /**
@@ -917,8 +997,14 @@ class Query
         $this->addQueryLog($sql, $parameters);
 
         //prepare and execute
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute($parameters);
+        try {
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute($parameters);
+        } catch (Exception $e) {
+            vp($sql);
+            throw $e;
+        }
+        
 
         if($this->take === 1) {
             $result = $stmt->fetch();
@@ -926,6 +1012,7 @@ class Query
         } else {
             $result = $stmt->fetchAll();
         }
+
         return $result;
     }
 
@@ -964,8 +1051,14 @@ class Query
         $this->addQueryLog($sql, $parameters);
 
         //PREPARE AND EXECUTE
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute($parameters);
+        try {
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute($parameters);
+        } catch (Exception $e) {
+            vp($sql);
+            throw $e;
+        }   
+        
         $this->rowCount = $stmt->rowCount();
         return $this->rowCount;
     }
@@ -996,8 +1089,14 @@ class Query
         list($sql, $parameters) = $this->compile($components);
         $this->addQueryLog($sql, $parameters);
 
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute($parameters);
+        try {
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute($parameters);
+        } catch (Exception $e) {
+            vp($sql);
+            throw $e;
+        }
+        
 
         $id = $this->pdo->lastInsertId();
         $this->primaryKeyValue = $id;
@@ -1159,13 +1258,70 @@ class Query
     }
 
 
+    private function nextWithScope($scope)
+    {
+        foreach($this->with as $key => $val) {
+            if(only_int($key)) {
+                $name = $val;
+                $queryWith = $this->baseModel->$val();
+            } else {
+                $name = $key;
+                $queryWith = $this->baseModel->$key();
+                $val($queryWith);
+            }
+            $scope = $queryWith->getWithScope($scope, $name);
+        }
+        return $scope;
+    }
+
+
+    private function backWithResult($result, $name)
+    {
+        $dict = [];
+        $local = $this->local_key;
+        $remote = $this->remote_key;
+        foreach($result as $item) {
+            $dict[$item->$local][] = $item;
+        } 
+
+        $scope = $this->scope;
+        if($this->map === 'one') {
+
+            foreach($scope as &$item) {
+                $remote_item = isset($dict[$item->$remote]) ? $dict[$item->$remote][0] : null;
+                if(is_object($item)) {
+                    $item->$name = $remote_item;
+                    $item->markSaved();
+                } else {
+                    $item[$name] = $remote_item;
+                }
+            }
+
+        } else {
+
+            $scope = $this->scope;
+            foreach($scope as &$item) {
+                $remote_item = isset($dict[$item->$remote]) ? $dict[$item->$remote] : [];
+                if(is_object($item)) {
+                    $item->$name = $remote_item;
+                    $item->markSaved();
+                } else {
+                    $item[$name] = $remote_item;
+                }
+            }
+
+        }
+        $this->scope = $scope;
+        return $scope;
+    }
+
     
     public function __call($func_name, $parameters)
     {
-        if(strpos($func_name, '_') !== 0) throw new FunctionNotExistException("Query->__call(): {$func_name} method does not exists");
+        if(substr($func_name, 0, 1) !== '_') throw new FunctionNotExistsException("Query->__call(): {$func_name} method does not exists");
 
         $func_name = substr($func_name, 1);
-        if(!method_exists($this, $func_name)) throw new FunctionNotExistException("Query->__call(): {$func_name} method does not exists");
+        if(!method_exists($this, $func_name)) throw new FunctionNotExistsException("Query->__call(): {$func_name} method does not exists");
 
         return call_user_func_array([$this, $func_name], $parameters);
     }

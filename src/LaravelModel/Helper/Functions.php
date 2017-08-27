@@ -103,6 +103,29 @@ if(!function_exists('array_compare')) {
     }
 }
 
+if(!function_exists('array_column')) {
+    /**
+     * compatiable array_column function for < php 5.5.0
+     *
+     * @param array $list
+     * @param [type] $key
+     * @param [type] $index
+     * @return void
+     */
+    function array_column(array $list, $key, $index = null) {
+        $result = [];
+        foreach($list as $row) {
+            $item = ($key === null) ? $row : $row[$key];
+
+            if($index === null) {
+                $result[] = $item;
+            } else {
+                $result[$row[$index]] = $item;
+            }
+        }
+        return $result;
+    }
+}
 
 if(!function_exists('object2Array')) {
     /**

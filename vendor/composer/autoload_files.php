@@ -6,5 +6,5 @@ $vendorDir = dirname(dirname(__FILE__));
 $baseDir = dirname($vendorDir);
 
 return array(
-    '12e62481446a8f05afc2ea47c6477e64' => $baseDir . '/src/LaravelModel/Functions.php',
+    '1626a200bfb0da086de9f4cd07c00350' => $baseDir . '/src/LaravelModel/Helper/Functions.php',
 );

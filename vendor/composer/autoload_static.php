@@ -7,7 +7,7 @@ namespace Composer\Autoload;
 class ComposerStaticInit4ff88d3405934eea52753eac3b37918a
 {
     public static $files = array (
-        '12e62481446a8f05afc2ea47c6477e64' => __DIR__ . '/../..' . '/src/LaravelModel/Functions.php',
+        '1626a200bfb0da086de9f4cd07c00350' => __DIR__ . '/../..' . '/src/LaravelModel/Helper/Functions.php',
     );
 
     public static $prefixLengthsPsr4 = array (

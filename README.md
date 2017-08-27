@@ -8,7 +8,7 @@
 ###### 你是不是在用别的框架的时候在想如果能用上Eloquent该多好？
 
 
-100% PHP原生开发，没有依赖包，尽可能保持原有框架的完整性。
+原生开发，无需依赖包，尽可能保持原有框架的完整性。
 --------------------------------------------------
 
 环境要求：
@@ -34,10 +34,12 @@ require vendor/autoload.php;
 use Heroest\LaravelModel\Traits\Model;
 ```
 
->或者添加兼容型的Trait（需要在原有的Eloquent风格的变量和方法前需要添加下划线 “_“ ， 用来与框架自身封装的方法区分开来）
+>或者添加兼容型的Trait（需要在原有的Eloquent风格的变量和方法前需要添加下划线 “_“ ， 用来与框架自身封装的方法区分开来
+>[重构中， 暂时无法使用]
 ```PHP
 use Heroest\LaravelModel\Traits\Compatiable\Model;
 ```
+
 
 <br>
 <br>
@@ -66,20 +68,22 @@ $this->addConnection('project', $pdo_object);
 <br />
 Done. Enjoy Laravel Eloquent
 
-###### Relationship功能正在开发中....
+##### Relationship功能正在开发中....
+###### 已完成了hasOne, hasMany, belongsTo逻辑
 
 
 范例代码, 或者查看test.php的代码：
 ---------
 
 ```PHP
-namespace Test\Model;
-
 require('vendor/autoload.php');
 
-class TestModel
+use Heroest\LaravelModel\Traits\Model;
+//use Heroest\LaravelModel\Traits\Relationship;
+
+class User
 {
-    use Heroest\LaravelModel\Traits\Model;
+    use Model;
 
     protected $table = 'user';
 
@@ -102,13 +106,50 @@ class TestModel
             'port' => 3306,
         ]);
     }
+
+    public function ext()
+    {
+        return $this->hasOne(\Test\Model\UserExt::CLASS, 'uid', 'id');
+    }
 }
 
-$model = new \Test\Model\TestModel();
+class UserExt
+{
+    use Model;
 
-//$list = $model->findMany([1,2,3,4,5,6,7,8]);
+    protected $table = 'user_ext';
+
+    protected $primaryKey = 'id';
+
+    protected $fillable = ['uid', 'title'];
+
+    protected $updated_at  = 'updated_at';
+
+    public function __construct()
+    {
+        $this->addConnection('project', [
+            'type' => 'mysql',
+            'host' => 'localhost',
+            'username' => 'root',
+            'password' => '664664',
+            'db_name' => 'laravel_test',
+            'port' => 3306,
+        ]);
+    }
+}
+
+$model = new \Test\Model\User();
+
+//$list = $model->with(['ext' => function($q){ $q->where('uid', '>', 0); }])->findMany([1,2,3]);
+$model->beginTransaction();
 
 $list = $model
+            ->with(['ext' => function($q){
+                $q->where(function($qu){
+                    $qu->where('uid', '>', 1);
+                    $qu->orWhere('uid', '<', 10);
+                });
+            }])
             ->leftJoin('user_ext e1', function($join){
                 $join->on('e1.uid', '=', 'user.id');
                 $join->on('e1.uid', '!=', 0);
@@ -120,18 +161,24 @@ $list = $model
                 $join->on('e2.uid', '=', 'user.id');
                 $join->on('e2.uid', 0);
             })
+            ->select('user.*')
             ->limit(3)
             ->get();
 
-
+//ppd($list);
 foreach($list as $user) {
-    $user->username = mt_rand(100, 999);
+    vp($user->toArray());
+    //$user->username = mt_rand(100, 999);
     $user->save();
 }
-
+//$model->rollback();
+$model->commit();
 vp($model->getQueryLog());
+/*
 $model->fill(['username' => 'abc', 'password' => 'def', 'email' => 'abc@test.com'])->save();
 $model->fill(['username' => 'cba', 'password' => 'fed', 'email' => 'cba@tset.moc'])->save();
+
 vp($model->getQueryLog());
+*/
 ```
 

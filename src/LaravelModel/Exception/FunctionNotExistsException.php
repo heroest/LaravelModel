@@ -2,7 +2,7 @@
 
 use Exception;
 
-class FunctionNotExistException extends Exception
+class FunctionNotExistsException extends Exception
 {
 
 }
