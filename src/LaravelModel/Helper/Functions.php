@@ -136,6 +136,6 @@ if(!function_exists('object2Array')) {
      */
     function object2Array($mixed)
     {
-        return json_decode(json_encode($mixed), true);
+        return is_array($mixed) ? $mixed: json_decode(json_encode($mixed), true);
     }
 }

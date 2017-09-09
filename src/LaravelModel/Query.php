@@ -294,7 +294,6 @@ class Query
         $this->take = null;
         $result = $this->executeSelectQuery();
         $result = object2Array($result);
-        $this->afterQuery();
         return $result['database_record_count'];
     }
 
@@ -311,6 +310,7 @@ class Query
         
         //handle With Relationships
         if(!empty($this->with)) $result = $this->nextWithScope($result);
+        if(!empty($this->scope)) $result = $this->queryWithScope($result);
 
         $this->afterQuery();
         return $result;
@@ -1147,7 +1147,6 @@ class Query
                 $parameters = array_add($parameters, $item->getValue());
             }
                 
-            
             $sql .= empty($sql) ? $item : " {$item}";
         }
 
