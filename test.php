@@ -104,7 +104,10 @@ $list = $model
             ->with(['ext' => function($q){
                 $q->where(function($qu){
                     $qu->where('uid', '>', 1);
-                    $qu->orWhere('uid', '<', 10);
+                    $qu->orWhere(function($quu){
+                        $quu->where('uid', '<', 11);
+                        $quu->where('uid', '>', 3);
+                    });
                 });
             }, 'post'])
             ->leftJoin('user_ext e1', function($join){
