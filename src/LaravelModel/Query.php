@@ -331,6 +331,8 @@ class Query
             $remote = $this->remote_key;
             $withIn[] = is_object($item) ? $item->$remote : $item[$remote];
         }
+        
+        if(empty($withIn)) return [];
         $this->whereIn($this->local_key, $withIn);
 
         $result = $this->executeSelectQuery();
@@ -587,7 +589,7 @@ class Query
                             ]);
 
         if(!empty($this->where) and end($this->where) !== self::SQL_LEFTP) $this->where[] = self::SQL_AND;
-        $this->where[] = $where_component;
+        $this->where[] = $whereIn_component;
 
         return $this;
     }

@@ -82,7 +82,7 @@ $list = $model
                         $quu->where('uid', '>', 3);
                     });
                 });
-            }, 'post'])
+            }])
             ->leftJoin('user_ext e1', function($join){
                 $join->on('e1.uid', '=', 'user.id');
                 $join->on('e1.uid', '!=', 0);
@@ -99,6 +99,7 @@ $list = $model
             ->get();
 
 //ppd($list);
+vp($list);
 foreach($list as $user) {
     vp($user->toArray());
     //$user->username = mt_rand(100, 999);

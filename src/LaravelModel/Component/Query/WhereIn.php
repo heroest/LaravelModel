@@ -1,6 +1,7 @@
 <?php namespace Heroest\LaravelModel\Component\Query;
 
 use Heroest\LaravelModel\Component\Query\Interfaces\QueryComponent;
+use Heroest\LaravelModel\Exception\InvalidParameterException;
 
 class WhereIn implements QueryComponent
 {
@@ -10,6 +11,7 @@ class WhereIn implements QueryComponent
 
     public function __construct($params)
     {
+        if(empty($params['values'])) throw new InvalidParameterException("Error in WhereIn Components: Empty array in WhereIn");
         $this->key = $params['key'];
         $this->nunm_values = count($params['values']);
         $this->values = $params['values'];
