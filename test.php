@@ -67,33 +67,6 @@ class UserExt
     }
 }
 
-class Post
-{
-    use Model;
-
-    protected $table = 'post';
-
-    protected $primaryKey = 'id';
-
-    protected $updated_at = 'updated_at';
-
-    public function __construct()
-    {
-        $this->addConnection('project', [
-            'type' => 'mysql',
-            'host' => 'localhost',
-            'username' => 'root',
-            'password' => '664664',
-            'db_name' => 'laravel_test',
-            'port' => 3306,
-        ]);
-    }
-    
-    public function poster()
-    {
-        return $this->belonsTo(\Test\Model\User::CLASS, 'poster_id', 'id');
-    }
-}
 
 $model = new \Test\Model\User();
 

@@ -335,6 +335,7 @@ class Query
 
         $result = $this->executeSelectQuery();
         $result = $this->buildQueryResult($result);
+        
         //handle With Relationships
         if(!empty($this->with)) $result = $this->nextWithScope($result);
         if(!empty($this->scope)) $result = $this->backWithResult($result, $name);
@@ -474,9 +475,8 @@ class Query
                                     ]);
             $this->parameters[] = $value;
 
-            if(!empty($this->where) and end($this->where) !== self::SQL_LEFTP)
-                $this->pushWhereStack(self::SQL_AND);
-            $this->pushWhereStack($where_component);
+            if(!empty($this->where) and end($this->where) !== self::SQL_LEFTP)  $this->where[] = self::SQL_AND;
+            $this->where[] = $where_component;
 
         } elseif ($count === 2) {
 
@@ -492,19 +492,17 @@ class Query
                                 ]);
             $this->parameters[] = $value;
 
-            if(!empty($this->where) and end($this->where) !== self::SQL_LEFTP)
-                $this->pushWhereStack(self::SQL_AND);
-            $this->pushWhereStack($where_component);
+            if(!empty($this->where) and end($this->where) !== self::SQL_LEFTP) $this->where[] = self::SQL_AND;
+            $this->where[] = $where_component;
                 
 
 
         } elseif ($count === 1 and ($func = array_shift($params)) instanceof Closure) {
 
-            if(!empty($this->where) and end($this->where) !== self::SQL_LEFTP) 
-                $this->pushWhereStack(self::SQL_AND);
-            $this->pushWhereStack(self::SQL_LEFTP);
+            if(!empty($this->where) and end($this->where) !== self::SQL_LEFTP) $this->where[] = self::SQL_AND;
+            $this->where[] = self::SQL_LEFTP;
             $func($this);
-            $this->pushWhereStack(self::SQL_RIGHTP);
+            $this->where[] = self::SQL_RIGHTP;
 
         } else {
             throw new InvalidParameterException("Query->where(): Invalid number of parameters");
@@ -537,9 +535,8 @@ class Query
                                     ]);
             $this->parameters[] = $value;
 
-            if(!empty($this->where) and end($this->where) !== self::SQL_LEFTP) 
-                $this->pushWhereStack(self::SQL_OR);
-            $this->pushWhereStack($where_component);
+            if(!empty($this->where) and end($this->where) !== self::SQL_LEFTP) $this->where[] = self::SQL_OR;
+            $this->where[] = $where_component;
             
         } elseif ($count === 2) {
 
@@ -553,18 +550,16 @@ class Query
                                     'value' => $value
                                 ]);
 
-            if(!empty($this->where) and end($this->where) !== self::SQL_LEFTP) 
-                $this->pushWhereStack(self::SQL_OR);
-            $this->pushWhereStack($where_component);
+            if(!empty($this->where) and end($this->where) !== self::SQL_LEFTP) $this->where[] = self::SQL_OR;
+            $this->where[] = $where_component;
             
 
         } elseif ($count === 1 and ($func = array_shift($params)) instanceof Closure) {
 
-            if(!empty($this->where) and end($this->where) !== self::SQL_LEFTP)
-                 $this->pushWhereStack(self::SQL_OR);
-            $this->pushWhereStack(self::SQL_LEFTP);
+            if(!empty($this->where) and end($this->where) !== self::SQL_LEFTP) $this->where[] = self::SQL_OR;
+            $this->where[] = self::SQL_LEFTP;
             $func($this);
-            $this->pushWhereStack(self::SQL_RIGHTP);
+            $this->where[] = self::SQL_RIGHTP;
 
         } else {
 
@@ -591,9 +586,8 @@ class Query
                                 'values' => $value_arr
                             ]);
 
-        if(!empty($this->where) and end($this->where) !== self::SQL_LEFTP)
-            $this->pushWhereStack(self::SQL_AND);
-        $this->pushWhereStack($whereIn_component);
+        if(!empty($this->where) and end($this->where) !== self::SQL_LEFTP) $this->where[] = self::SQL_AND;
+        $this->where[] = $where_component;
 
         return $this;
     }
@@ -617,8 +611,7 @@ class Query
         if(empty($this->where)) {
             $this->where[] = $whereIn_component;
         } else {
-            if(!empty($this->where) and end($this->where) !== self::SQL_LEFTP)
-                $this->where[] = self::SQL_AND;
+            if(!empty($this->where) and end($this->where) !== self::SQL_LEFTP) $this->where[] = self::SQL_AND;
             $this->where[] = $whereIn_component;
         }
 
@@ -1119,19 +1112,6 @@ class Query
                 : "LIMIT {$this->offset}, {$this->take}";
     }
 
-
-    /**
-     * Push to Where Components stack
-     *
-     * @param [type] $value
-     * @return void
-     */
-    private function pushWhereStack($value)
-    {
-        $this->where[] = $value;
-    }
-
-
     /**
      * Compile a colleciton of query components to generate a SQL and a set of parameters
      *
@@ -1287,7 +1267,7 @@ class Query
         if($this->map === 'one') {
 
             foreach($scope as &$item) {
-                $remote_item = isset($dict[$item->$remote]) ? $dict[$item->$remote][0] : null;
+                $remote_item = !empty($dict[$item->$remote]) ? $dict[$item->$remote][0] : null;
                 if(is_object($item)) {
                     $item->$name = $remote_item;
                     $item->markSaved();
@@ -1296,11 +1276,11 @@ class Query
                 }
             }
 
-        } else {
+        } elseif($this->map === 'many') {
 
             $scope = $this->scope;
             foreach($scope as &$item) {
-                $remote_item = isset($dict[$item->$remote]) ? $dict[$item->$remote] : [];
+                $remote_item = !empty($dict[$item->$remote]) ? $dict[$item->$remote] : [];
                 if(is_object($item)) {
                     $item->$name = $remote_item;
                     $item->markSaved();

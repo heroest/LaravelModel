@@ -59,8 +59,8 @@ if(!function_exists('array_add')) {
      * Append an item or every element from 2nd array to first array
      *
      * @param array $base
-     * @param [type] $mixed
-     * @return $base
+     * @param mixed $mixed
+     * @return array
      */
     function array_add()
     {
@@ -108,9 +108,9 @@ if(!function_exists('array_column')) {
      * compatiable array_column function for < php 5.5.0
      *
      * @param array $list
-     * @param [type] $key
-     * @param [type] $index
-     * @return void
+     * @param string $key
+     * @param string $index
+     * @return array
      */
     function array_column(array $list, $key, $index = null) {
         $result = [];

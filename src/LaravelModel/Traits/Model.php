@@ -437,15 +437,19 @@ trait Model
      */
     public function toArray()
     {
-        if(empty($this->hidden)) {
-            return $this->data;
-        } else {
-            $result = [];
-            foreach($this->data as $k => $v) {
-                if(!in_array($k, $this->hidden)) $result[$k] = $v;
+        
+        $result = [];
+        foreach($this->data as $k => $v) {
+            if(empty($this->hidden) and !in_array($k, $this->hidden)) {
+                if(is_object($v)) {
+                    $result[$k] = method_exists($v, 'toArray') ? $v->toArray() : object2Array($v);
+                } else {
+                    $result[$k] = $v;
+                }
             }
-            return $result;
         }
+        return $result;
+        
     }
 
 
@@ -493,6 +497,11 @@ trait Model
             throw new InvalidParameterException('Model->hasOne(): the 1st parameter expects to be string or object type');
         }
 
+        if(!method_exists($obj, 'map')) {
+            $class_name = get_class($obj);
+            throw new FunctionNotExistsExceptioin("Model->hasOne(): [$class_name] does not use Model Trait");
+        }
+
         return $obj->map('one', $foreign_key, $primary_key)->withScope([$this->data]);
     }
 
@@ -506,6 +515,11 @@ trait Model
             throw new InvalidParameterException('Model->hasMany(): the 1st parameter expects to be string or object type');
         }
 
+        if(!method_exists($obj, 'map')) {
+            $class_name = get_class($obj);
+            throw new FunctionNotExistsExceptioin("Model->hasMany(): [$class_name] does not use Model Trait");
+        }
+
         return $obj->map('many', $foreign_key, $primary_key)->withScope([$this->data]);
     }
 
@@ -517,6 +531,11 @@ trait Model
             $obj = clone $mixed;
         } else {
             throw new InvalidParameterException('Model->belongsTo(): the 1st parameter expects to be string or object type');
+        }
+
+        if(!method_exists($obj, 'map')) {
+            $class_name = get_class($obj);
+            throw new FunctionNotExistsExceptioin("Model->belongsTo(): [$class_name] does not use Model Trait");
         }
 
         return $obj->map('one', $primary_key, $foreign_key)->withScope($this->data);
