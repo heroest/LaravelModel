@@ -946,7 +946,7 @@ class Query
      * @param string $remote
      * @return void
      */
-    public function map($type, $local, $remote, $connected_table = '')
+    public function map($type, $local, $remote)
     {
         $this->map = $type;
 
@@ -954,7 +954,7 @@ class Query
 
         $this->remote_key = $remote;
 
-        $this->connected_table = $connected_table;
+        return $this;
     }
 
 

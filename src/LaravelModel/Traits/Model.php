@@ -381,7 +381,8 @@ trait Model
             throw new FunctionNotExistsExceptioin("Model->belongsToMany(): [$class_name] does not use Model Trait");
         }
 
-        return $obj->map('many-to-many', $local_key, $remote_key, $table_name);
+        /* to-do */
+        return $obj->map('many', $remote_key, $local_key, $table_name)->innerJoin();
     }
 
     /**
