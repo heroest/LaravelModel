@@ -2,6 +2,7 @@
 
 use Heroest\LaravelModel\Exception\InvalidParameterException;
 use Heroest\LaravelModel\Exception\ConnectionNotFoundException;
+use Heroest\LaravelModel\Exception\FunctionNotExistsException;
 use Heroest\LaravelModel\Query;
 use Heroest\LaravelModel\ConnectionPool;
 
@@ -20,6 +21,8 @@ trait Model
     private $data = [];
 
     private $saved = [];
+
+    private $function_prefix = '';
 
 
     //public $table = '';
@@ -76,43 +79,6 @@ trait Model
         return $this;
     }
     
-
-    /**
-     * Get Query Log
-     *
-     * @return array
-     */
-    public function getQueryLog()
-    {
-        return $this->getQuery()->getQueryLog();
-    }
-
-
-    /**
-     * add a SELECT clause in the query
-     *
-     * @return $this
-     */
-    public function select()
-    {
-        $params = func_get_args();
-        $this->getQuery()->select($params);
-        return $this;
-    }
-
-
-    /**
-     * return count for number of record
-     *
-     * @return void
-     */
-    public function count()
-    {
-        $params = func_get_args();
-        return $this->getQuery()->count($params);
-    }
-
-
     /**
      * Set datatable name
      *
@@ -127,39 +93,14 @@ trait Model
     }
 
     /**
-     * Find a record where matched primary_key_value
+     * set function prefix for compatiable
      *
-     * @param [mixed] $primary_key_value
      * @return void
      */
-    public function find($mixed)
+    public function setFunctionPrefix($prefix)
     {
-        return $this->getQuery()->find($mixed);
+        $this->function_prefix = $prefix;
     }
-
-    /**
-     * Find a record where matched many primary_key_value
-     *
-     * @param [array] $primary_key_value
-     * @return void
-     */
-    public function findMany(array $value_arr)
-    {
-        return $this->getQuery()->findMany($value_arr);
-    }
-
-
-    /**
-     * get query result
-     *
-     * @param void
-     * @return void
-     */
-    public function get()
-    {
-        return $this->getQuery()->get();
-    }
-
     
     /**
      * get first row of result
@@ -172,91 +113,62 @@ trait Model
         $this->setPrimaryKeyValue($result);
         return $result;
     }
+    
+
+    /**
+     * Get Query Log
+     *
+     * @return array
+     */
+    public function getQueryLog()
+    {
+        return $this->getQuery()->getQueryLog();
+    }
 
 
     /**
-     * add limit clause to the query
+     * return count for number of record
      *
-     * @param integer $num
      * @return void
      */
-    public function offset($num)
-    {
-        $this->getQuery()->offset($num);
-        return $this;
-    }
-    public function take($num)
-    {
-        $this->getQuery()->take($num);
-        return $this;
-    }
-    public function limit()
+    public function count()
     {
         $params = func_get_args();
-        $this->getQuery()->limit($params);
-        return $this;
-    }
-
-
-    /**
-     * Add Where clause to Query
-     *
-     * @return $this
-     */
-    public function where()
-    {
-        $params = func_get_args();
-        $this->getQuery()->where($params);
-        return $this;
-    }
-
-
-    /**
-     * Add Or Where clause to Query
-     *
-     * @return $this
-     */
-    public function orWhere()
-    {
-        $params = func_get_args();
-        $this->getQuery()->orWhere($params);
-        return $this;
+        return $this->getQuery()->count($params);
     }
 
     /**
-     * Add WhereIn clause to Query
+     * Find a record where matched primary_key_value
      *
-     * @return $this
+     * @param mixed $primary_key_value
+     * @return void
      */
-    public function whereIn($key, array $value_arr)
+    public function find($mixed)
     {
-        $this->getQuery()->whereIn($key, $value_arr);
-        return $this;
-    }
-
-
-    /**
-     * Add WhereNotIn clause to Query
-     *
-     * @return $this
-     */
-    public function whereNotIn($key, array $value_arr)
-    {
-        $this->getQuery()->whereNotIn($key, $value_arr);
-        return $this;
+        return $this->getQuery()->find($mixed);
     }
 
     /**
-     * Massive Assignement
+     * Find a record where matched many primary_key_value
      *
-     * @return $this
+     * @param array $primary_key_value
+     * @return void
      */
-    public function fill(array $params)
+    public function findMany(array $value_arr)
     {
-        $this->getQuery()->fill($params);
-        return $this;
+        return $this->getQuery()->findMany($value_arr);
     }
-    
+
+    /**
+     * get query result
+     *
+     * @param void
+     * @return void
+     */
+    public function get()
+    {
+        return $this->getQuery()->get();
+    }
 
     /**
      * Save new data in the database
@@ -268,88 +180,6 @@ trait Model
         $params = func_get_args();
         $this->getQuery()->syncData($this->data); //sync latest data first
         return $this->getQuery()->save($params);
-    }
-
-
-    /**
-     * Add Innser Join Clause into Query
-     *
-     * @return void
-     */
-    public function join()
-    {
-        $params = func_get_args();
-        $this->getQuery()->innerJoin($params);
-        return $this;
-    }
-
-    /**
-     * Add Left Join Clause into Query
-     *
-     * @return void
-     */
-    public function leftJoin()
-    {
-        $params = func_get_args();
-        $this->getQuery()->leftJoin($params);
-        return $this;
-    }
-
-
-    /**
-     * Add Right Join Clause into Query
-     *
-     * @return void
-     */
-    public function rightJoin()
-    {
-        $params = func_get_args();
-        $this->getQuery()->rightJoin($params);
-        return $this;
-    }
-
-
-    public function with()
-    {
-        $params = func_get_args();
-        $params = (count($params) === 1 and is_array($params[0])) ? $params[0] : $params;
-        $this->getQuery()->with($params);
-        return $this;
-    }
-
-
-    /**
-     * Add exist clause to Query
-     *
-     * @return $this
-     */
-    public function whereHas()
-    {
-        $params = func_get_args();
-        $this->getQuery()->whereHas($this, $params);
-        return $this;
-    }
-
-
-    /**
-     * return last inserted id
-     *
-     * @return int or null
-     */
-    public function lastInsertId()
-    {
-        return $this->getQuery()->lastInsertId();
-    }
-
-
-    /**
-     * return number of row affected from last query
-     *
-     * @return int or null
-     */
-    public function rowCount()
-    {
-        return $this->getQuery()->rowCount();
     }
 
 
@@ -429,7 +259,6 @@ trait Model
         $this->saved = $this->data;
     }
 
-
     /**
      * Convert Model to data array
      *
@@ -440,9 +269,11 @@ trait Model
         
         $result = [];
         foreach($this->data as $k => $v) {
-            if(empty($this->hidden) and !in_array($k, $this->hidden)) {
+            if(empty($this->hidden) or !in_array($k, $this->hidden)) {
                 if(is_object($v)) {
                     $result[$k] = method_exists($v, 'toArray') ? $v->toArray() : object2Array($v);
+                } elseif(is_array($v)) {
+                    $result[$k] = result2Array($v);
                 } else {
                     $result[$k] = $v;
                 }
@@ -451,7 +282,7 @@ trait Model
         return $result;
         
     }
-
+    
 
     /**
      * Set Map type of selection with relation
@@ -465,12 +296,6 @@ trait Model
         return $this;
     }
 
-
-    public function withScope($scope)
-    {
-        $this->getQuery()->withScope($scope);
-        return $this;
-    }
 
 
     public function getWithScope($scope, $name)
@@ -541,6 +366,24 @@ trait Model
         return $obj->map('one', $primary_key, $foreign_key)->withScope($this->data);
     }
 
+    public function belongsToMany($mixed, $table_name, $local_key, $remote_key)
+    {
+        if(is_string($mixed)) {
+            $obj = new $mixed();
+        } elseif(is_object($mixed)) {
+            $obj = clone $mixed;
+        } else {
+            throw new InvalidParameterException('Model->belongsTo(): the 1st parameter expects to be string or object type');
+        }
+
+        if(!method_exists($obj, 'map')) {
+            $class_name = get_class($obj);
+            throw new FunctionNotExistsExceptioin("Model->belongsToMany(): [$class_name] does not use Model Trait");
+        }
+
+        return $obj->map('many-to-many', $local_key, $remote_key, $table_name);
+    }
+
     /**
      * Return a initialized Query Object;
      *
@@ -562,6 +405,7 @@ trait Model
                 'fillable' => isset($this->fillable) ? $this->fillable : [],
                 'hidden' => isset($this->hidden) ? $this->hidden : [],
                 'guarded' => isset($this->guarded) ? $this->guarded : [],
+                'function_prefix' => $this->function_prefix,
                 'created_at' => isset($this->created_at) ? $this->created_at : '',
                 'updated_at' => isset($this->updated_at) ? $this->updated_at : '',
             ]);
@@ -625,5 +469,22 @@ trait Model
         if(isset($this->data[$key])) unset($this->data[$key]);
         $parent = get_parent_class();
         if(!empty($parent) and method_exists($parent, '__unset')) parent::__unset($key);
+    }
+
+    public function __call($function_name, $params)
+    {
+        $query = $this->getQuery();
+        $function_short = (!empty($this->function_prefix) and strpos($function_name, $this->function_prefix) === 0) 
+                    ? substr($function_name, strlen($this->function_prefix))
+                    : $function_name;
+        if(method_exists($query, $function_short)) {
+            call_user_func_array([$query, $function_short], $params);
+            return $this;
+        } elseif(method_exists($query, $function_name)) {
+            call_user_func_array([$query, $function_name], $params);
+            return $this;
+        } else {
+            throw new FunctionNotExistsException("{$function_name} Does not exists, did you forgot to set function_prefix?");
+        }
     }
 }

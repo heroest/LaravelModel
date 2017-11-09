@@ -17,11 +17,13 @@ trait Connection
 
     protected function hasConnection($name)
     {
+        if(empty(self::$pool)) self::$pool = ConnectionPool::getInstance();
         return self::$pool->hasConnection($name);
     }
 
     protected function getConnection($name)
     {
+        if(empty(self::$pool)) self::$pool = ConnectionPool::getInstance();
         return self::$pool->getConnection($name);
     }
     

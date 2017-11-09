@@ -139,3 +139,22 @@ if(!function_exists('object2Array')) {
         return is_array($mixed) ? $mixed: json_decode(json_encode($mixed), true);
     }
 }
+
+
+if(!function_exists('result2Array')) {
+    function result2Array(array $arr)
+    {
+        $result = [];
+        foreach($arr as $key => $item) {
+            if(is_object($item)) {
+                $result[] = method_exists($item, 'toArray') ? $item->toArray() : object2Array($item);
+            } elseif(is_array($item)) {
+                vp("nested");
+                $result[] = result2Array($item);
+            } else {
+                $result[$key] = $item;
+            }
+        }
+        return $result;
+    }
+}

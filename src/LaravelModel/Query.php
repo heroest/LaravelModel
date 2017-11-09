@@ -209,6 +209,7 @@ class Query
     private $map = null;
     private $local_key = '';
     private $remote_key = '';
+    private $connected_table = '';
 
 
 
@@ -236,6 +237,13 @@ class Query
     private $saved = [];
 
 
+    /**
+     * Model function name prefix
+     *
+     * @var string
+     */
+    private $function_prefix = '';
+
     public function __construct($params)
     {
         $this->baseModel = $params['baseModel'];
@@ -251,6 +259,7 @@ class Query
         $this->fillable = $params['fillable'];
         $this->hidden = $params['hidden'];
         $this->guarded = $params['guarded'];
+        $this->function_prefix = $params['function_prefix'];
         $this->dates = isset($params['dates'])
                             ? array_merge([$this->updated_at, $this->created_at], $prams['dates'])
                             : [$this->updated_at, $this->created_at];
@@ -310,7 +319,6 @@ class Query
         
         //handle With Relationships
         if(!empty($this->with)) $result = $this->nextWithScope($result);
-        if(!empty($this->scope)) $result = $this->queryWithScope($result);
 
         $this->afterQuery();
         return $result;
@@ -322,8 +330,12 @@ class Query
      *
      * @return $result
      */
-    public function getWithScope($scope, $name)
+    public function getWithScope()
     {
+        $params = func_get_args();
+        $params = (count($params) === 1 and is_array($params[0])) ? $params[0] : $params;
+        list($scope, $name) = $params;
+
         $this->scope = $scope;
 
         $withIn = [];
@@ -869,7 +881,7 @@ class Query
     /**
      * Execute an Update Query
      *
-     * @return number_row_affected
+     * @return int number_row_affected
      */
     public function update()
     {
@@ -884,7 +896,7 @@ class Query
     /**
      * Get all executed Query statement and parameters
      *
-     * @return void
+     * @return array
      */
     public function getQueryLog()
     {
@@ -934,13 +946,15 @@ class Query
      * @param string $remote
      * @return void
      */
-    public function map($type, $local, $remote)
+    public function map($type, $local, $remote, $connected_table = '')
     {
         $this->map = $type;
 
         $this->local_key = $local;
 
         $this->remote_key = $remote;
+
+        $this->connected_table = $connected_table;
     }
 
 
@@ -1278,7 +1292,7 @@ class Query
                 }
             }
 
-        } elseif($this->map === 'many') {
+        } elseif($this->map === 'many' or $this->map === 'many-to-many') {
 
             $scope = $this->scope;
             foreach($scope as &$item) {
@@ -1294,17 +1308,6 @@ class Query
         }
         $this->scope = $scope;
         return $scope;
-    }
-
-    
-    public function __call($func_name, $parameters)
-    {
-        if(substr($func_name, 0, 1) !== '_') throw new FunctionNotExistsException("Query->__call(): {$func_name} method does not exists");
-
-        $func_name = substr($func_name, 1);
-        if(!method_exists($this, $func_name)) throw new FunctionNotExistsException("Query->__call(): {$func_name} method does not exists");
-
-        return call_user_func_array([$this, $func_name], $parameters);
     }
 
 }

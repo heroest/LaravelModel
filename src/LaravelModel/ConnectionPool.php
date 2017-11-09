@@ -64,7 +64,7 @@ class ConnectionPool
      * @param string $name
      * @return boolean
      */
-    public function hasConnectioin($name)
+    public function hasConnection($name)
     {
         return isset(self::$pool[$name]);
     }
