@@ -1171,11 +1171,12 @@ class Query
 
     private function buildQueryResult($mixed)
     {
+        $populate_func = empty($this->function_prefix) ? 'populate' : "{$this->function_prefix}populate";
         if($this->take === 1) {
 
             $data = (is_object($mixed)) ? object2Array($mixed) : $mixed;
-            $this->setPrimaryKeyValue($data);
-            $this->baseModel->populate($data);
+            $this->setPrimaryKeyValue($data); 
+            $this->baseModel->$populate_func($data);
             return $this->baseModel;
 
         } else {
@@ -1184,7 +1185,7 @@ class Query
             foreach($mixed as $row) {
                 $data = (is_object($row)) ? object2Array($row) : $row;
                 $object = clone $this->baseModel;
-                $object->populate($data);
+                $object->$populate_func($data);
                 $list[] = $object;
             }
             return $list;
@@ -1264,7 +1265,8 @@ class Query
                 $queryWith = $this->baseModel->$key();
                 $val($queryWith);
             }
-            $scope = $queryWith->getWithScope($scope, $name);
+            $func = empty($this->function_prefix) ? 'getWithScope' : "{$this->function_prefix}getWithScope";
+            $scope = $queryWith->$func($scope, $name);
         }
         return $scope;
     }
@@ -1308,6 +1310,21 @@ class Query
         }
         $this->scope = $scope;
         return $scope;
+    }
+
+    public function __call($func_name, $params)
+    {
+        $func_short = (!empty($this->function_prefix) and strpos($func_name, $this->function_prefix) === 0)
+                        ? substr($func_name, strlen($this->function_prefix))
+                        : $func_name;
+
+        if(method_exists($this, $func_short)) {
+            return call_user_func_array([$this, $func_short], $params);
+        } elseif(method_exists($this, $func_name)) {
+            return call_user_func_array([$this, $func_name], $params);
+        } else {
+            throw new FunctionNotExistsException("Error in Query->__call(): [$func_name] does not exists");
+        }
     }
 
 }

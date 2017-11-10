@@ -4,14 +4,12 @@ use Heroest\LaravelModel\Exception\InvalidParameterException;
 use Heroest\LaravelModel\Exception\ConnectionNotFoundException;
 use Heroest\LaravelModel\Exception\FunctionNotExistsException;
 use Heroest\LaravelModel\Query;
-use Heroest\LaravelModel\ConnectionPool;
+use Heroest\LaravelModel\ConnectionPool as Pool;
 
 use PDO, Exception;
 
 trait Model
 {
-    use \Heroest\LaravelModel\Traits\Connection;
-
     private $connection = null;
 
     private $query = null;
@@ -60,7 +58,7 @@ trait Model
     public function addConnection($name, $mixed)
     {
         $this->connection = $name;
-        $this->loadConnection($name, $mixed);
+        Pool::add($name, $mixed);
         return $this;
     }
 
@@ -73,7 +71,7 @@ trait Model
      */
     public function connection($name)
     {
-        if(!$this->hasConnection($name))
+        if(!Pool::has($name))
             throw new ConnectionNotFoundException("Model->connection(): [{$name}] not found");
         $this->connection = $name;
         return $this;
@@ -192,7 +190,7 @@ trait Model
     public function beginTransaction($connection = '')
     {
         $connection = empty($connection) ? $this->connection : $connection;
-        $pdo = $this->getConnection($connection);
+        $pdo = Pool::get($connection);
         if(!$this->inTransaction($connection)) $pdo->beginTransaction();
     }
 
@@ -206,7 +204,7 @@ trait Model
     public function inTransaction($connection = '')
     {
         $connection = empty($connection) ? $this->connection : $connection;
-        $pdo = $this->getConnection($connection);
+        $pdo = Pool::get($connection);
         return $pdo->inTransaction();
     }
 
@@ -220,7 +218,7 @@ trait Model
     public function rollback($connection = '')
     {
         $connection = empty($connection) ? $this->connection : $connection;
-        $pdo = $this->getConnection($connection);
+        $pdo = Pool::get($connection);
         if($this->inTransaction($connection)) $pdo->rollback();
     }
 
@@ -234,7 +232,7 @@ trait Model
     public function commit($connection = '')
     {
         $connection = empty($connection) ? $this->connection : $connection;
-        $pdo = $this->getConnection($connection);
+        $pdo = Pool::get($connection);
         if($this->inTransaction($connection)) $pdo->commit();
     }
 
@@ -396,7 +394,7 @@ trait Model
             $this->query = new Query([
                 'baseModel' => $this,
                 'connection' => $this->connection,
-                'pdo' => self::$pool->getConnection($this->connection),
+                'pdo' => Pool::get($this->connection),
                 'primaryKey' => isset($this->primaryKey) ? $this->primaryKey : 'id',
                 'primaryKeyValue' => !is_null($this->primaryKeyValue) ? $this->primaryKeyValue : null, 
                 'table' => isset($this->table) ? $this->table : '',

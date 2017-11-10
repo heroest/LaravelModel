@@ -31,7 +31,7 @@ class ConnectionPool
      * @param string $name
      * @return PDO object
      */
-    public function getConnection($name)
+    public static function get($name)
     {
         if(!isset(self::$pool[$name])) 
             throw new ConnectionNotFoundException("Pool->getConnection(): [$name] not found");
@@ -42,18 +42,18 @@ class ConnectionPool
     /**
      * Initialize a connection(PDO) and save in the connection_pool
      *
-     * @param [string] $connection_name
-     * @param array $config || PDO instance
+     * @param string $connection_name
+     * @param array $config || object PDO instance
      * @return $this
      */
-    public function addConnection($name, $mixed)
+    public static function add($name, $mixed)
     {
         if(isset(self::$pool[$name])) return;
 
         if(!is_array($mixed) and !($mixed instanceof PDO)) 
             throw new InvalidParameterException("Pool->addConnection(), the 2nd parameter expects an array or a PDO instance");
         self::$pool[$name] = is_array($mixed)
-                            ? $this->buildPdo($mixed)
+                            ? self::buildPdo($mixed)
                             : $mixed;       
     }
 
@@ -64,7 +64,7 @@ class ConnectionPool
      * @param string $name
      * @return boolean
      */
-    public function hasConnection($name)
+    public static function has($name)
     {
         return isset(self::$pool[$name]);
     }
@@ -76,7 +76,7 @@ class ConnectionPool
      * @param [array] $config
      * @return PDO object;
      */
-    private function buildPdo($config)
+    private static function buildPdo($config)
     {
         $keys = ['type', 'host', 'username', 'password', 'db_name', 'port'];
         foreach($keys as $key) {
