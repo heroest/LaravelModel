@@ -380,7 +380,7 @@ trait Model
         }
 
         /* to-do */
-        return $obj->map('many', $remote_key, $local_key, $table_name)->innerJoin();
+        return $obj->map('many-to-many', $remote_key, $local_key, $table_name)->innerJoin($table_name, "{$obj->table}.{$local_key}", "{$table_name}.{$remote_key}");
     }
 
     /**

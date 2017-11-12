@@ -210,7 +210,7 @@ class Query
     private $map = null;
     private $local_key = '';
     private $remote_key = '';
-    private $connected_table = '';
+    private $join_table = '';
 
 
 
@@ -345,8 +345,14 @@ class Query
             $withIn[] = is_object($item) ? $item->$remote : $item[$remote];
         }
         
+        //if none record founded.. return empty data
         if(empty($withIn)) return [];
-        $this->whereIn($this->local_key, $withIn);
+
+        if(empty($this->join_table)) {
+            $this->whereIn($this->local_key, $withIn);
+        } else {
+            $this->whereIn("{$this->join_table}.{$this->local_key}", $withIn);
+        }
 
         $result = $this->executeSelectQuery();
         $result = $this->buildQueryResult($result);
@@ -949,13 +955,15 @@ class Query
      * @param string $remote
      * @return void
      */
-    public function map($type, $local, $remote)
+    public function map($type, $local, $remote, $join_table = '')
     {
         $this->map = $type;
 
         $this->local_key = $local;
 
         $this->remote_key = $remote;
+
+        $this->join_table = $join_table;
 
         return $this;
     }
@@ -1299,7 +1307,7 @@ class Query
                 }
             }
 
-        } elseif($this->map === 'many' or $this->map === 'many-to-many') {
+        } elseif($this->map === 'many') {
 
             $scope = $this->scope;
             foreach($scope as &$item) {
