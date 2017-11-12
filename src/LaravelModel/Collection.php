@@ -7,11 +7,19 @@ use Iterator;
 class Collection implements ArrayAccess, Countable, Iterator, Serializable
 {
     private $storage = [];
+    
     private $index = 0;
 
-    public function __construct(array $arr)
+    private $function_prefix = '';
+
+    public function __construct(array $arr = [])
     {
         $this->storage = $arr;
+    }
+
+    public function setFunctionPrefix($prefix)
+    {
+        $this->function_prefix = $prefix;
     }
 
     public function push($value)
@@ -35,7 +43,8 @@ class Collection implements ArrayAccess, Countable, Iterator, Serializable
         $result = [];
         foreach($this->storage as $item) {
             if(is_object($item)) {
-                $result[] = (is_object($item) and method_exists($item, 'toArray')) ? $item->toArray() : object2Array($item);
+                $func = "{$this->function_prefix}toArray";
+                $result[] = method_exists($item, $func) ? $item->toArray() : object2Array($item);
             } else {    
                 $result[] = $item;
             }

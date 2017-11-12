@@ -3,6 +3,7 @@
 use Heroest\LaravelModel\Exception\InvalidParameterException;
 use Heroest\LaravelModel\Exception\FunctionNotExistsException;
 use Heroest\LaravelModel\Component\Query\Interfaces\QueryComponent;
+use Heroest\LaravelModel\Collection;
 use Heroest\LaravelModel\Component\Factory;
 use Closure;
 use Exception;
@@ -352,6 +353,8 @@ class Query
         
         //handle With Relationships
         if(!empty($this->with)) $result = $this->nextWithScope($result);
+
+        //after all done...
         if(!empty($this->scope)) $result = $this->backWithResult($result, $name);
         
         $this->afterQuery();
@@ -1181,14 +1184,16 @@ class Query
 
         } else {
 
-            $list = [];
+            $collection = new Collection();
+            if(!empty($this->function_prefix)) $collection->setFunctionPrefix($this->function_prefix);
+            
             foreach($mixed as $row) {
                 $data = (is_object($row)) ? object2Array($row) : $row;
                 $object = clone $this->baseModel;
                 $object->$populate_func($data);
-                $list[] = $object;
+                $collection[] = $object;
             }
-            return $list;
+            return $collection;
 
         }
     }
