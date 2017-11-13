@@ -3,8 +3,9 @@
 use ArrayAccess;
 use Countable;
 use Iterator;
+use Serializable;
 
-class Collection implements ArrayAccess, Countable, Iterator, Serializable
+class Collection implements ArrayAccess, Countable, Serializable, Iterator
 {
     private $storage = [];
     
@@ -44,7 +45,7 @@ class Collection implements ArrayAccess, Countable, Iterator, Serializable
         foreach($this->storage as $item) {
             if(is_object($item)) {
                 $func = "{$this->function_prefix}toArray";
-                $result[] = method_exists($item, $func) ? $item->toArray() : object2Array($item);
+                $result[] = method_exists($item, $func) ? $item->$func() : object2Array($item);
             } else {    
                 $result[] = $item;
             }
@@ -60,7 +61,7 @@ class Collection implements ArrayAccess, Countable, Iterator, Serializable
 
     public function offsetGet($index)
     {
-        return isset($this->storage[$index]) ? $this->storage[$index] : [];
+        return isset($this->storage[$index]) ? $this->storage[$index] : null;
     }
 
     public function offsetSet($index, $value)
@@ -84,7 +85,7 @@ class Collection implements ArrayAccess, Countable, Iterator, Serializable
 
     public function current()
     {
-        $this->storage[$this->index];
+        return $this->storage[$this->index];
     }
 
     public function key()
