@@ -33,6 +33,10 @@ class User
         return $this->hasOne(\Test\Model\PublicInfo::CLASS, 'user_id', 'id');
     }
 
+    public function teacher()
+    {
+        return $this->belongsToMany(\Test\Model\Teacher::CLASS, 'class_room', ['id' => 'student_id'], ['teacher_id' => 'id']);
+    }
 }
 
 class PublicInfo
@@ -83,21 +87,26 @@ class ClassNet
     }
 }
 
+class Teacher
+{
+    use \Heroest\LaravelModel\Traits\Model;
+
+    public $table = 'user_teacher';
+
+    public $primaryKey = 'id';
+
+    public function __construct()
+    {
+        $this->connection('vip_base');
+    }
+}
+
 
 $model = new \Test\Model\User();
 
 //$list = $model->with(['ext' => function($q){ $q->where('uid', '>', 0); }])->findMany([1,2,3]);
 $list = $model->with([
-                    'public_info',
-                    'classroom' => function($q) {
-                        $q->with([
-                            'class_net' => function($cq) {
-                                $cq->where('role', 1);
-                            }
-                        ])
-                        ->where('status', 2)
-                        ->select('id', 'student_id', 'name');
-                    }
+                    'teacher'
                 ])
                 ->where(function($aq){
                     $aq->where('device', 1);
@@ -105,9 +114,9 @@ $list = $model->with([
                 })
                 ->select('id', 'nick')
                 ->limit(2)->get();
-pp(json_encode(result2Array($list)));
+pp($list->toArray());
 
-vp($model->getQueryLog());
+//vp($model->getQueryLog());
 /*
 $model->fill(['username' => 'abc', 'password' => 'def', 'email' => 'abc@test.com'])->save();
 $model->fill(['username' => 'cba', 'password' => 'fed', 'email' => 'cba@tset.moc'])->save();

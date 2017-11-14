@@ -361,7 +361,7 @@ trait Model
 
         if(!method_exists($obj, 'map')) {
             $class_name = get_class($obj);
-            throw new FunctionNotExistsExceptioin("Model->belongsToMany(): [$class_name] does not use Model Trait");
+            throw new FunctionNotExistsException("Model->belongsToMany(): [$class_name] does not use Model Trait");
         }
 
         /* to-do */
@@ -378,6 +378,22 @@ trait Model
                 ->innerJoin($table_name, "{$obj->table}.{$remote_to}", "{$table_name}.{$local_from}")
                 ->select("{$obj->table}.*");
     }
+
+    /**
+     * Add Relation between models
+     *
+     * @param mixed className || class object
+     * @param string $local_key
+     * @param string $remote_key
+     * @param string $join_table
+     * @return void
+     */
+    public function map($mixed, $local_key, $remote_key, $join_table = '')
+    {
+        $this->getQuery()->map($mixed, $local_key, $remote_key, $join_table);
+        return $this;
+    }
+
 
     /**
      * Return a initialized Query Object;
