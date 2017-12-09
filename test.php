@@ -2,7 +2,6 @@
 
 require('vendor/autoload.php');
 
-
 class User
 {
     use \Heroest\LaravelModel\Traits\Model;
