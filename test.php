@@ -104,8 +104,8 @@ $list = $model->with([
                     $aq->orWhere('device', 2);
                 })
                 ->select('id', 'nick')
-                ->limit(2)->get();
-pp(json_encode(result2Array($list)));
+                ->limit(2)->get()->toArray();
+pp($list);
 
 vp($model->getQueryLog());
 /*

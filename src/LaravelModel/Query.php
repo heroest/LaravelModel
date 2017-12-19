@@ -1297,7 +1297,8 @@ class Query
         $scope = $this->scope;
         if($this->map === 'one') {
 
-            foreach($scope as &$item) {
+            foreach($scope as $k => $v) {
+                $item = &$scope[$k];
                 $remote_item = !empty($dict[$item->$remote]) ? $dict[$item->$remote][0] : null;
                 if(is_object($item)) {
                     $item->$name = $remote_item;
@@ -1310,7 +1311,8 @@ class Query
         } elseif($this->map === 'many') {
 
             $scope = $this->scope;
-            foreach($scope as &$item) {
+            foreach($scope as $k => $v) {
+                $item = &$scope[$k];
                 $remote_item = !empty($dict[$item->$remote]) ? $dict[$item->$remote] : [];
                 if(is_object($item)) {
                     $item->$name = $remote_item;

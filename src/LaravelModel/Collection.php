@@ -3,6 +3,7 @@
 use ArrayAccess;
 use Countable;
 use Iterator;
+use Serializable;
 
 class Collection implements ArrayAccess, Countable, Iterator, Serializable
 {
