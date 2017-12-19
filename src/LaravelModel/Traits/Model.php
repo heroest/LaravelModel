@@ -168,6 +168,7 @@ trait Model
         return $this->getQuery()->get();
     }
 
+
     /**
      * Save new data in the database
      *
@@ -267,35 +268,19 @@ trait Model
         
         $result = [];
         foreach($this->data as $k => $v) {
-            if(empty($this->hidden) or !in_array($k, $this->hidden)) {
-                if(is_object($v)) {
-                    $result[$k] = method_exists($v, 'toArray') ? $v->toArray() : object2Array($v);
-                } elseif(is_array($v)) {
-                    $result[$k] = result2Array($v);
-                } else {
-                    $result[$k] = $v;
-                }
+            if(!empty($this->hidden) and in_array($k, $this->hidden)) continue;
+            
+            if(is_object($v)) {
+                $result[$k] = $v->toArray();
+            } else {
+                $result[$k] = $v;
             }
+            
         }
         return $result;
         
     }
     
-
-    /**
-     * Set Map type of selection with relation
-     *
-     * @param string $type
-     * @return void
-     */
-    public function map($type, $local, $remote)
-    {
-        $this->getQuery()->map($type, $local, $remote);
-        return $this;
-    }
-
-
-
     public function getWithScope($scope, $name)
     {
         return $this->getQuery()->getWithScope($scope, $name);
@@ -325,7 +310,7 @@ trait Model
             throw new FunctionNotExistsExceptioin("Model->hasOne(): [$class_name] does not use Model Trait");
         }
 
-        return $obj->map('one', $foreign_key, $primary_key)->withScope([$this->data]);
+        return $obj->map('one', $foreign_key, $primary_key);
     }
 
     public function hasMany($mixed, $foreign_key, $primary_key)
@@ -343,7 +328,7 @@ trait Model
             throw new FunctionNotExistsExceptioin("Model->hasMany(): [$class_name] does not use Model Trait");
         }
 
-        return $obj->map('many', $foreign_key, $primary_key)->withScope([$this->data]);
+        return $obj->map('many', $foreign_key, $primary_key);
     }
 
     public function belongsTo($mixed, $foreign_key, $primary_key)
@@ -361,10 +346,10 @@ trait Model
             throw new FunctionNotExistsExceptioin("Model->belongsTo(): [$class_name] does not use Model Trait");
         }
 
-        return $obj->map('one', $primary_key, $foreign_key)->withScope($this->data);
+        return $obj->map('one', $primary_key, $foreign_key);
     }
 
-    public function belongsToMany($mixed, $table_name, $local_key, $remote_key)
+    public function belongsToMany($mixed, $table_name, $local, $remote)
     {
         if(is_string($mixed)) {
             $obj = new $mixed();
@@ -376,12 +361,39 @@ trait Model
 
         if(!method_exists($obj, 'map')) {
             $class_name = get_class($obj);
-            throw new FunctionNotExistsExceptioin("Model->belongsToMany(): [$class_name] does not use Model Trait");
+            throw new FunctionNotExistsException("Model->belongsToMany(): [$class_name] does not use Model Trait");
         }
 
         /* to-do */
-        return $obj->map('many-to-many', $remote_key, $local_key, $table_name)->innerJoin($table_name, "{$obj->table}.{$local_key}", "{$table_name}.{$remote_key}");
+        foreach($local as $k => $v) {
+            $local_from = $k;
+            $local_to = $v;
+        }
+        foreach($remote as $k => $v) {
+            $remote_from = $k;
+            $remote_to = $v;
+        }
+        return $obj
+                ->map('many', $local_to, $local_from, $table_name)
+                ->innerJoin($table_name, "{$obj->table}.{$remote_to}", "{$table_name}.{$local_from}")
+                ->select("{$obj->table}.*");
     }
+
+    /**
+     * Add Relation between models
+     *
+     * @param mixed className || class object
+     * @param string $local_key
+     * @param string $remote_key
+     * @param string $join_table
+     * @return void
+     */
+    public function map($mixed, $local_key, $remote_key, $join_table = '')
+    {
+        $this->getQuery()->map($mixed, $local_key, $remote_key, $join_table);
+        return $this;
+    }
+
 
     /**
      * Return a initialized Query Object;

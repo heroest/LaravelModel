@@ -245,8 +245,11 @@ class Query
      */
     private $function_prefix = '';
 
-    public function __construct($params)
+    public function __construct($params = [])
     {
+        //if user want simple SQl query
+        if(empty($params)) return;
+
         $this->baseModel = $params['baseModel'];
         $this->connection = $params['connection'];
         $this->pdo = $params['pdo'];
@@ -279,6 +282,21 @@ class Query
     public function table($table)
     {
         $this->table = $table;
+        return $this;
+    }
+
+
+    /**
+     * Set Connection for this Query
+     *
+     * @param [type] $name
+     * @return void
+     */
+    public function connection($name)
+    {
+        if(!ConnectionPool::has($name)) throw new InvalidParameterException("Error in Query->connection() can not found connection [{$name}]");
+        $this->pdo = ConnectionPool::get($name);
+        return $this;
     }
 
 
@@ -292,9 +310,15 @@ class Query
         $params = func_get_args();
         $params = (count($params) === 1 and is_array($params[0])) ? $params[0] : $params;
         $this->select = $params;
+        return $this;
     }
 
 
+    /**
+     * return count of records
+     *
+     * @return int
+     */
     public function count()
     {
         $params = func_get_args();
@@ -331,12 +355,8 @@ class Query
      *
      * @return $result
      */
-    public function getWithScope()
+    public function getWithScope($scope, $name)
     {
-        $params = func_get_args();
-        $params = (count($params) === 1 and is_array($params[0])) ? $params[0] : $params;
-        list($scope, $name) = $params;
-
         $this->scope = $scope;
 
         $withIn = [];
@@ -345,8 +365,8 @@ class Query
             $withIn[] = is_object($item) ? $item->$remote : $item[$remote];
         }
         
-        //if none record founded.. return empty data
-        if(empty($withIn)) return [];
+        //if none record founded.. return scope
+        if(empty($withIn)) return $scope;
 
         if(empty($this->join_table)) {
             $this->whereIn($this->local_key, $withIn);
@@ -969,17 +989,12 @@ class Query
     }
 
 
-    public function withScope($data)
-    {
-        $this->scope = $data;
-    }
-
-
     public function with()
     {
         $params = func_get_args();
         $params = (count($params) === 1 and is_array($params[0])) ? $params[0] : $params;
         $this->with = $params;
+        return $this;
     }
 
 
@@ -1182,13 +1197,24 @@ class Query
 
     private function buildQueryResult($mixed)
     {
-        $populate_func = empty($this->function_prefix) ? 'populate' : "{$this->function_prefix}populate";
+        if(empty($this->function_prefix)) {
+            $populate_func = 'populate';
+            $toArray_func = 'toArray';
+        } else {
+            $populate_func = "{$this->function_prefix}populate";
+            $toArray_func = "{$this->functioin_prefix}toArray";
+        }
+
         if($this->take === 1) {
 
-            $data = (is_object($mixed)) ? object2Array($mixed) : $mixed;
-            $this->setPrimaryKeyValue($data); 
-            $this->baseModel->$populate_func($data);
-            return $this->baseModel;
+            $data = (is_object($mixed)) ? (method_exists($mixed, $toArray_func) ? $mixed->$toArray_func() : object2Array($mixed)) : $mixed;
+            if($this->baseModel !== null) {
+                $this->setPrimaryKeyValue($data); 
+                $this->baseModel->$populate_func($data);
+                return $this->baseModel;
+            } else {
+                return $data;
+            }
 
         } else {
 
@@ -1196,10 +1222,14 @@ class Query
             if(!empty($this->function_prefix)) $collection->setFunctionPrefix($this->function_prefix);
             
             foreach($mixed as $row) {
-                $data = (is_object($row)) ? object2Array($row) : $row;
-                $object = clone $this->baseModel;
-                $object->$populate_func($data);
-                $collection[] = $object;
+                $data = (is_object($row)) ? (method_exists($row, $toArray_func) ? $row->$toArray_func() : object2Array($row)) : $row;
+                if($this->baseModel !== null) {
+                    $object = clone $this->baseModel;
+                    $object->$populate_func($data);
+                    $collection[] = $object;
+                } else {
+                    $collection[] = $data;
+                }
             }
             return $collection;
 
@@ -1291,9 +1321,9 @@ class Query
         $local = $this->local_key;
         $remote = $this->remote_key;
         foreach($result as $item) {
+            if(!isset($dict[$item->$local])) $dict[$item->$local] = new Collection();
             $dict[$item->$local][] = $item;
-        } 
-
+        }
         $scope = $this->scope;
         if($this->map === 'one') {
 
@@ -1310,10 +1340,9 @@ class Query
 
         } elseif($this->map === 'many') {
 
-            $scope = $this->scope;
             foreach($scope as $k => $v) {
                 $item = &$scope[$k];
-                $remote_item = !empty($dict[$item->$remote]) ? $dict[$item->$remote] : [];
+                $remote_item = !empty($dict[$item->$remote]) ? $dict[$item->$remote] : new Collection();
                 if(is_object($item)) {
                     $item->$name = $remote_item;
                     $item->markSaved();
@@ -1321,9 +1350,8 @@ class Query
                     $item[$name] = $remote_item;
                 }
             }
-
         }
-        $this->scope = $scope;
+
         return $scope;
     }
 

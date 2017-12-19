@@ -175,8 +175,6 @@ trait CompatiableModel
                 if(empty($this->heroest_parameter['hidden']) or !in_array($k, $this->heroest_parameter['hidden'])) {
                     if(is_object($v)) {
                         $result[$k] = methods_exists($v, 'toArray') ? $v->toArray() : object2Array($v);
-                    } elseif (is_array($v)) {
-                        $result[$k] = result2Array($v);
                     } else {
                         $result[$k] = $v;
                     }
