@@ -105,15 +105,14 @@ class Teacher
 $model = new \Test\Model\User();
 
 //$list = $model->with(['ext' => function($q){ $q->where('uid', '>', 0); }])->findMany([1,2,3]);
-$list = $model->with([
-                    'teacher'
-                ])
+$list = $model->with([ 'teacher' ])
                 ->where(function($aq){
-                    $aq->where('device', 1);
+                    $aq->orWhere('device', 1);
                     $aq->orWhere('device', 2);
                 })
                 ->select('id', 'nick')
-                ->limit(2)->get();
+                ->limit(2)
+                ->get();
 pp($list->toArray());
 
 //vp($model->getQueryLog());
