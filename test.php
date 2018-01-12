@@ -111,9 +111,8 @@ $list = $model->with([ 'teacher' ])
                     $aq->orWhere('device', 2);
                 })
                 ->select('id', 'nick')
-                ->limit(2)
-                ->get();
-pp($list->toArray());
+                ->limit(2)->get()->toArray();
+pp($list);
 
 //vp($model->getQueryLog());
 /*

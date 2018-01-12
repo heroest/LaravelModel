@@ -142,10 +142,10 @@ if(!function_exists('object2Array')) {
 
 
 if(!function_exists('result2Array')) {
-    function result2Array(array $arr)
+    function result2Array($mixed)
     {
         $result = [];
-        foreach($arr as $key => $item) {
+        foreach($mixed as $key => $item) {
             if(is_object($item)) {
                 $result[] = method_exists($item, 'toArray') ? $item->toArray() : object2Array($item);
             } elseif(is_array($item)) {
