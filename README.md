@@ -68,9 +68,6 @@ $this->addConnection('project', $pdo_object);
 <br />
 Done. Enjoy Laravel Eloquent
 
-##### Relationship功能正在开发中....
-###### 已完成了hasOne, hasMany, belongsTo逻辑
-
 
 范例代码, 或者查看test.php的代码：
 ---------

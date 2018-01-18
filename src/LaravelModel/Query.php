@@ -2,6 +2,7 @@
 
 use Heroest\LaravelModel\Exception\InvalidParameterException;
 use Heroest\LaravelModel\Exception\FunctionNotExistsException;
+use Heroest\LaravelModel\Exception\RelationNotExistException;
 use Heroest\LaravelModel\Component\Query\Interfaces\QueryComponent;
 use Heroest\LaravelModel\Collection;
 use Heroest\LaravelModel\Component\Factory;
@@ -18,7 +19,6 @@ class Query
 
     const SQL_RIGHTP = ')';
 
-
     /**
      * BaseModel
      *
@@ -32,7 +32,6 @@ class Query
      * @var array
      */
     private static $queryLog = [];
-
 
     /**
      * Connection name
@@ -48,15 +47,12 @@ class Query
      */
     private $pdo;
 
-
     /**
      * Primary Key of the table
      *
      * @var string
      */
     private $primaryKey = '';
-
-
 
     /**
      * Primary Key value
@@ -65,14 +61,12 @@ class Query
      */
     private $primaryKeyValue = null;
 
-
     /**
      * Last inserted id;
      *
      * @var integer
      */
     private $lastInsertId = null;
-
 
     /**
      * Determine whether enable handle created_at and updated_at
@@ -81,14 +75,12 @@ class Query
      */
     private $timestamps = false;
 
-
     /**
      * Column name for updated_at
      *
      * @var string
      */
     private $updated_at = '';
-
 
     /**
      * Column name for created_at field
@@ -97,14 +89,12 @@ class Query
      */    
     private $created_at = '';
 
-
     /**
      * Column name for updated_at field
      *
      * @var string
      */
     private $dateFormat = 'U';
-
 
     /**
      * Table name
@@ -113,14 +103,12 @@ class Query
      */
     private $table = '';
 
-
     /**
      * Columns that will treated as dates data
      *
      * @var array
      */
     private $dates = [];
-
 
     /**
      * Indicate which columns can be filled using massive assignment
@@ -129,14 +117,12 @@ class Query
      */
     private $fillable = [];
 
-
     /**
      * Indicate which columns should be hidden in the result
      *
      * @var array
      */
     private $hidden = [];
-
 
     /**
      * Indicate which columns should not be filled using massive assignment
@@ -145,7 +131,6 @@ class Query
      */
     private $guarded = [];
 
-
     /**
      * SELECT components
      *
@@ -153,6 +138,12 @@ class Query
      */
     private $select = [];
 
+    /**
+     * SELECT components that must be select
+     *
+     * @var array
+     */
+    private $mustSelect = [];
 
     /**
      * WHERE components
@@ -161,14 +152,12 @@ class Query
      */
     private $where = [];
 
-
     /**
      * JOIN components
      *
      * @var array
      */
     private $join = [];
-
 
     /**
      * On Components
@@ -185,7 +174,6 @@ class Query
     private $take = null;
     private $offset = null;
 
-
     /**
      * Indicate with relationships in the subquery
      *
@@ -193,14 +181,12 @@ class Query
      */
     private $with = [];
 
-
     /**
      * Store scope between relationships
      *
      * @var array
      */
     private $scope = [];
-
 
     /**
      * Map config for selection with relationships
@@ -212,15 +198,12 @@ class Query
     private $remote_key = '';
     private $join_table = '';
 
-
-
     /**
      * Number of row affected after Update Or Delete Query
      *
      * @var [int]
      */
     private $rowCount = null;
-
 
     /**
      * Data Storage
@@ -229,14 +212,12 @@ class Query
      */
     private $data = [];
 
-
     /**
      * Data that saved
      *
      * @var array
      */
     private $saved = [];
-
 
     /**
      * Model function name prefix
@@ -272,7 +253,6 @@ class Query
         if(!empty($this->primaryKey)) $this->guarded[] = $this->primaryKey;
     }
 
-
     /**
      * Set datatable name
      *
@@ -284,7 +264,6 @@ class Query
         $this->table = $table;
         return $this;
     }
-
 
     /**
      * Set Connection for this Query
@@ -299,7 +278,6 @@ class Query
         return $this;
     }
 
-
     /**
      * Add select clause in the Query
      *
@@ -309,10 +287,22 @@ class Query
     {
         $params = func_get_args();
         $params = (count($params) === 1 and is_array($params[0])) ? $params[0] : $params;
-        $this->select = $params;
+        $this->select = array_unique(array_merge($this->mustSelect, $params));
         return $this;
     }
 
+    /**
+     * add (must) select clause in the Query
+     *
+     * @return void
+     */
+    public function mustSelect()
+    {
+        $params = func_get_args();
+        $params = (count($params) === 1 and is_array($params[0])) ? $params[0] : $params;
+        $this->mustSelect = $params;
+        return $this;
+    }
 
     /**
      * return count of records
@@ -331,7 +321,6 @@ class Query
         return $result['database_record_count'];
     }
 
-
     /**
      * Get Result from the Query
      *
@@ -349,6 +338,30 @@ class Query
         return $result;
     }
 
+    /**
+     * Return data line by line
+     *
+     * @param int $chunk_size
+     * @return collection
+     */
+    public function each($chunk_size = 2)
+    {
+        if ($chunk_size < 2) throw new InvalidParameterException("each(): chunk size must be greater or equal to 2");
+        $offset = 0;
+        $query = clone $this;
+        $query->offset($offset * $chunk_size)->take($chunk_size);
+        $chunk = $query->get();
+
+        while(!$chunk->isEmpty()) {
+            foreach($chunk as $row) {
+                yield $row;
+            }
+            if (count($chunk) < $chunk_size) break;
+            $offset++;
+            $query = clone $this;
+            $chunk = $query->offset($offset * $chunk_size)->take($chunk_size)->get();
+        }
+    }
 
     /**
      * Get Result from the Query with Scope
@@ -387,7 +400,6 @@ class Query
         return $result;
     }
 
-
     /**
      * get first row of the result
      *
@@ -406,7 +418,6 @@ class Query
         $this->afterQuery();
         return $result;
     }
-
 
     /**
      * Find a record where matched primary_key_value
@@ -428,7 +439,6 @@ class Query
         return $result;
     }
 
-
     /**
      * Find a record where matched many primary_key_value
      *
@@ -449,6 +459,27 @@ class Query
         return $result;
     }
 
+    /**
+     * Insert Query
+     *
+     * @param array $mixed
+     * @return int lastInsertedId
+     */
+    public function insert(array $mixed)
+    {
+        return $this->executeInsertQuery($mixed);
+    }
+
+    /**
+     * Update Query
+     *
+     * @param array $mixed
+     * @return int row_effected
+     */
+    public function update(array $mixed)
+    {
+        return $this->executeUpdateQuery($mixed);
+    }
 
     /**
      * Add Limit Clause to Query
@@ -460,12 +491,14 @@ class Query
     {
         if(!only_int($num)) throw new InvalidParameterException("Query->take() expects integer parameter");
         $this->take = $num;
+        return $this;
     }
 
     public function offset($num)
     {
         if(!only_int($num)) throw new InvalidParameterException("Query->offset() expects integer parameter");
         $this->offset = $num;
+        return $this;
     }
 
     public function limit()
@@ -492,7 +525,6 @@ class Query
         return $this;
     }
 
-
     /**
      * Add Where clause to Query
      *
@@ -516,7 +548,6 @@ class Query
                                         'op' => $op,
                                         'value' => $value,
                                     ]);
-            $this->parameters[] = $value;
 
             if(!empty($this->where) and end($this->where) !== self::SQL_LEFTP)  $this->where[] = self::SQL_AND;
             $this->where[] = $where_component;
@@ -533,7 +564,6 @@ class Query
                                     'op' => '=',
                                     'value' => $value
                                 ]);
-            $this->parameters[] = $value;
 
             if(!empty($this->where) and end($this->where) !== self::SQL_LEFTP) $this->where[] = self::SQL_AND;
             $this->where[] = $where_component;
@@ -547,12 +577,17 @@ class Query
             $func($this);
             $this->where[] = self::SQL_RIGHTP;
 
+        } elseif($count == 1 and is_array($params[0])) {
+
+            foreach($params[0] as $key => $value) {
+                $this->where($key, $value);
+            }
+
         } else {
             throw new InvalidParameterException("Query->where(): Invalid number of parameters");
         }
         return $this;
     }
-
 
     /**
      * Add Or Where clause to Query
@@ -576,7 +611,6 @@ class Query
                                         'op' => $op,
                                         'value' => $value
                                     ]);
-            $this->parameters[] = $value;
 
             if(!empty($this->where) and end($this->where) !== self::SQL_LEFTP) $this->where[] = self::SQL_OR;
             $this->where[] = $where_component;
@@ -604,6 +638,12 @@ class Query
             $func($this);
             $this->where[] = self::SQL_RIGHTP;
 
+        } elseif($count == 1 and is_array($params[0])) {
+
+            foreach($params[0] as $key => $value) {
+                $this->where($key, $value);
+            }
+            
         } else {
 
             throw new InvalidParameterException("Query->where(): Invalid number of parameters");
@@ -661,7 +701,142 @@ class Query
         return $this;
     }
 
+    /**
+     * add where statement to join table
+     *
+     * @return object
+     */
+    public function wherePivot()
+    {
+        $params = func_get_args();
+        $params = (count($params) === 1 and is_array($params[0])) ? $params[0] : $params;
+        $count = count($params);
+        if($count === 3) {
+            list($key, $op, $value) = $params;
+            $where_component = Factory::build(
+                                    'Query', 
+                                    'Where', 
+                                    [
+                                        'key' => "{$this->join_table}.{$key}",
+                                        'op' => $op,
+                                        'value' => $value,
+                                    ]);
+            if(!empty($this->where) and end($this->where) !== self::SQL_LEFTP)  $this->where[] = self::SQL_AND;
+            $this->where[] = $where_component;
+        } elseif ($count === 2) {
+            list($key, $value) = $params;
+            $where_component = Factory::build(
+                                'Query', 
+                                'Where', 
+                                [
+                                    'key' => "{$this->join_table}.{$key}",
+                                    'op' => '=',
+                                    'value' => $value
+                                ]);
+            if(!empty($this->where) and end($this->where) !== self::SQL_LEFTP) $this->where[] = self::SQL_AND;
+            $this->where[] = $where_component;
+        } elseif ($count === 1 and ($func = array_shift($params)) instanceof Closure) {
+            if(!empty($this->where) and end($this->where) !== self::SQL_LEFTP) $this->where[] = self::SQL_AND;
+            $this->where[] = self::SQL_LEFTP;
+            $func($this);
+            $this->where[] = self::SQL_RIGHTP;
+        } elseif($count == 1 and is_array($params[0])) {
+            foreach($params[0] as $key => $value) {
+                $this->wherePivot($key, $value);
+            }
+        } else {
+            throw new InvalidParameterException("Query->wherePivot(): Invalid number of parameters");
+        }
+        return $this;
+    }
 
+    public function orWherePivot()
+    {
+        $params = func_get_args();
+        $params = (count($params) === 1 and is_array($params[0])) ? $params[0] : $params;
+        $count = count($params);
+        if($count === 3) {
+            list($key, $op, $value) = $params;
+            $where_component = Factory::build(
+                                    'Query', 
+                                    'Where', 
+                                    [
+                                        'key' => "{$this->join_table}.{$key}",
+                                        'op' => $op,
+                                        'value' => $value,
+                                    ]);
+            if(!empty($this->where) and end($this->where) !== self::SQL_LEFTP)  $this->where[] = self::SQL_OR;
+            $this->where[] = $where_component;
+        } elseif ($count === 2) {
+            list($key, $value) = $params;
+            $where_component = Factory::build(
+                                'Query', 
+                                'Where', 
+                                [
+                                    'key' => "{$this->join_table}.{$key}",
+                                    'op' => '=',
+                                    'value' => $value
+                                ]);
+            if(!empty($this->where) and end($this->where) !== self::SQL_LEFTP) $this->where[] = self::SQL_OR;
+            $this->where[] = $where_component;
+        } elseif ($count === 1 and ($func = array_shift($params)) instanceof Closure) {
+            if(!empty($this->where) and end($this->where) !== self::SQL_LEFTP) $this->where[] = self::SQL_OR;
+            $this->where[] = self::SQL_LEFTP;
+            $func($this);
+            $this->where[] = self::SQL_RIGHTP;
+        } elseif($count == 1 and is_array($params[0])) {
+            foreach($params[0] as $key => $value) {
+                $this->wherePivot($key, $value);
+            }
+        } else {
+            throw new InvalidParameterException("Query->wherePivot(): Invalid number of parameters");
+        }
+        return $this;
+    }
+
+    public function wherePivotIn($name, $value_arr)
+    {
+        $count = count($value_arr);
+        $whereIn_component = Factory::build(
+                            'Query', 
+                            'WhereIn', 
+                            [
+                                'key' => "{$this->join_table}.{$name}",
+                                'values' => $value_arr
+                            ]);
+
+        if(!empty($this->where) and end($this->where) !== self::SQL_LEFTP) $this->where[] = self::SQL_AND;
+        $this->where[] = $whereIn_component;
+
+        return $this;
+    }
+
+    public function wherePivotNotIn($name, $value_arr)
+    {
+        $count = count($value_arr);
+        $whereIn_component = Factory::build(
+                            'Query', 
+                            'WhereNotIn',
+                            [
+                                'key' => "{$this->join_table}.{$name}",
+                                'values' => $value_arr
+                            ]);
+
+        if(empty($this->where)) {
+            $this->where[] = $whereIn_component;
+        } else {
+            if(!empty($this->where) and end($this->where) !== self::SQL_LEFTP) $this->where[] = self::SQL_AND;
+            $this->where[] = $whereIn_component;
+        }
+
+        return $this;
+    }
+
+    /**
+     * add inner join
+     *
+     * @return object
+     */
     public function innerJoin()
     {
         $params = func_get_args();
@@ -695,7 +870,11 @@ class Query
         }
     }
 
-
+    /**
+     * add left join
+     *
+     * @return object
+     */
     public function leftJoin()
     {
         $params = func_get_args();
@@ -729,6 +908,11 @@ class Query
         }
     }
 
+    /**
+     * add right join
+     *
+     * @return object
+     */
     public function rightJoin()
     {
         $params = func_get_args();
@@ -762,6 +946,11 @@ class Query
         }
     }
 
+    /**
+     * add ON statement
+     *
+     * @return object
+     */
     public function on()
     {
         $params = func_get_args();
@@ -798,7 +987,11 @@ class Query
         return $this;
     }
 
-
+    /**
+     * add orOn statement
+     *
+     * @return object
+     */
     public function orOn()
     {
         $params = func_get_args();
@@ -835,7 +1028,6 @@ class Query
         return $this;
     }
 
-
     /**
      * Massive Assignment
      *
@@ -863,7 +1055,6 @@ class Query
 
         }
     }
-
 
     /**
      * Update or Create a Record in the database
@@ -906,22 +1097,6 @@ class Query
         }
     }
 
-
-    /**
-     * Execute an Update Query
-     *
-     * @return int number_row_affected
-     */
-    public function update()
-    {
-        $params = func_get_args();
-        $params = (count($params) === 1 and is_array($params[0])) ? $params[0] : $params;
-        $result = $this->executeUpdateQuery($params);
-        $this->afterQuery();
-        return $result;
-    }
-
-
     /**
      * Get all executed Query statement and parameters
      *
@@ -931,7 +1106,6 @@ class Query
     {
         return self::$queryLog;
     }
-
 
     /**
      * get last inserted id from previous query
@@ -943,7 +1117,6 @@ class Query
         return $this->lastInsertId;
     }
 
-
     /**
      * get count of row affected from previous query
      *
@@ -953,7 +1126,6 @@ class Query
     {
         return $this->rowCount;
     }
-
 
     /**
      * Sync updated Data
@@ -966,14 +1138,13 @@ class Query
         $this->data = array_merge($this->data, $updated_data);
     }
 
-
     /**
      * Set map mode and relation keys for scope
      *
      * @param string $type
      * @param string $local
      * @param string $remote
-     * @return void
+     * @return object
      */
     public function map($type, $local, $remote, $join_table = '')
     {
@@ -988,7 +1159,11 @@ class Query
         return $this;
     }
 
-
+    /**
+     * add eager-load 
+     *
+     * @return object
+     */
     public function with()
     {
         $params = func_get_args();
@@ -996,7 +1171,6 @@ class Query
         $this->with = $params;
         return $this;
     }
-
 
     /**
      * Execute a select Query
@@ -1036,7 +1210,6 @@ class Query
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute($parameters);
         } catch (Exception $e) {
-            vp($sql);
             throw $e;
         }
         
@@ -1050,7 +1223,6 @@ class Query
 
         return $result;
     }
-
 
     /**
      * Execute a update query
@@ -1090,7 +1262,6 @@ class Query
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute($parameters);
         } catch (Exception $e) {
-            vp($sql);
             throw $e;
         }   
         
@@ -1098,12 +1269,11 @@ class Query
         return $this->rowCount;
     }
 
-
     /**
      * Execute a INSERT Query
      *
-     * @param [type] $params
-     * @return void
+     * @param array $params
+     * @return int
      */
     private function executeInsertQuery(array $params)
     {
@@ -1128,17 +1298,14 @@ class Query
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute($parameters);
         } catch (Exception $e) {
-            vp($sql);
             throw $e;
         }
         
-
         $id = $this->pdo->lastInsertId();
         $this->primaryKeyValue = $id;
         $this->lastInsertId = $id;
         return $id;
     }
-
 
     /**
      * Build a Limit clause after a query statement
@@ -1162,19 +1329,18 @@ class Query
      */
     private function compile(array $arr)
     {
-        $sql = '';
+        $sql = [];
         $parameters = [];
         foreach($arr as $item) {
             if($item instanceof QueryComponent) {
                 $parameters = array_add($parameters, $item->getValue());
             }
                 
-            $sql .= empty($sql) ? $item : " {$item}";
+            $sql[] = $item;
         }
 
-        return [$sql, $parameters];
+        return [implode(' ', $sql), $parameters];
     }
-
 
     /**
      * set Primary Key Value
@@ -1193,7 +1359,6 @@ class Query
             $this->primaryKeyValue = isset($mixed[$key]) ? $mixed[$key] : null;
         }
     }
-
 
     private function buildQueryResult($mixed)
     {
@@ -1302,9 +1467,11 @@ class Query
         foreach($this->with as $key => $val) {
             if(only_int($key)) {
                 $name = $val;
+                if(!method_exists($this->baseModel, $val)) throw new RelationNotExistException(get_class($this->baseModel) . ' has no relation called ' . $val);
                 $queryWith = $this->baseModel->$val();
             } else {
                 $name = $key;
+                if(!method_exists($this->baseModel, $key)) throw new RelationNotExistException(get_class($this->baseModel) . ' has no relation called ' . $key);
                 $queryWith = $this->baseModel->$key();
                 $val($queryWith);
             }
@@ -1326,7 +1493,6 @@ class Query
         }
         $scope = $this->scope;
         if($this->map === 'one') {
-
             foreach($scope as $k => $v) {
                 $item = &$scope[$k];
                 $remote_item = !empty($dict[$item->$remote]) ? $dict[$item->$remote][0] : null;
@@ -1337,9 +1503,7 @@ class Query
                     $item[$name] = $remote_item;
                 }
             }
-
         } elseif($this->map === 'many') {
-
             foreach($scope as $k => $v) {
                 $item = &$scope[$k];
                 $remote_item = !empty($dict[$item->$remote]) ? $dict[$item->$remote] : new Collection();
@@ -1351,7 +1515,6 @@ class Query
                 }
             }
         }
-
         return $scope;
     }
 

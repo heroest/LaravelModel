@@ -53,6 +53,11 @@ class Collection implements ArrayAccess, Countable, Serializable, Iterator
         return $result;
     }
 
+    public function isEmpty()
+    {
+        return empty($this->storage);
+    }
+
     /**  ArrayAccess, Countable, Iterator, Serializable **/
     public function offsetExists($index)
     {

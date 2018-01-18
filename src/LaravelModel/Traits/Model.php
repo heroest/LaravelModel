@@ -168,6 +168,38 @@ trait Model
         return $this->getQuery()->get();
     }
 
+    /**
+     * get chunked data line by line;
+     *
+     * @param integer $chunk_size
+     * @return mixed
+     */
+    public function each($chunk_size = 1)
+    {
+        return $this->getQuery()->each($chunk_size);
+    }
+
+    /**
+     * insert data into database
+     *
+     * @param array $mixed
+     * @return int lastInsertedId
+     */
+    public function insert(array $mixed)
+    {
+        return $this->getQuery()->insert($mixed);
+    }
+
+    /**
+     * update
+     *
+     * @param array $mixed
+     * @return void
+     */
+    public function update(array $mixed)
+    {
+        return $this->getQuery()->update($mixed);
+    }
 
     /**
      * Save new data in the database
@@ -209,7 +241,6 @@ trait Model
         return $pdo->inTransaction();
     }
 
-
     /**
      * Rollback a transaction
      *
@@ -222,7 +253,6 @@ trait Model
         $pdo = Pool::get($connection);
         if($this->inTransaction($connection)) $pdo->rollback();
     }
-
 
     /**
      * Commit a transaction
@@ -251,7 +281,6 @@ trait Model
         $this->query = null;
         return $this;
     }
-
 
     public function markSaved()
     {
@@ -349,7 +378,7 @@ trait Model
         return $obj->map('one', $primary_key, $foreign_key);
     }
 
-    public function belongsToMany($mixed, $table_name, $local, $remote)
+    public function belongsToMany($mixed, $join_table_name, $local, $remote)
     {
         if(is_string($mixed)) {
             $obj = new $mixed();
@@ -373,10 +402,16 @@ trait Model
             $remote_from = $k;
             $remote_to = $v;
         }
+        $join_to = "{$obj->table}.{$remote_to}";
+        $join_from = "{$join_table_name}.{$remote_from}";
+        
         return $obj
-                ->map('many', $local_to, $local_from, $table_name)
-                ->innerJoin($table_name, "{$obj->table}.{$remote_to}", "{$table_name}.{$local_from}")
-                ->select("{$obj->table}.*");
+                ->map('many', $local_to, $local_from, $join_table_name)
+                ->innerJoin($join_table_name, $join_from, $join_to)
+                ->mustSelect(
+                    "{$join_table_name}.{$local_to}", 
+                    "{$obj->table}.{$obj->primaryKey}"
+                );
     }
 
     /**
